@@ -9,6 +9,7 @@ from django.urls import include, path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.usuarios.views import (
+    CambiarContrasenaView,
     LoginView,
     SolicitarRecuperacionView,
     VerificarCodigoView,
@@ -22,6 +23,11 @@ urlpatterns = [
         'api/auth/verificar-codigo/',
         VerificarCodigoView.as_view(),
         name='auth-verificar-codigo',
+    ),
+    path(
+        'api/auth/cambiar-contrasena/',
+        CambiarContrasenaView.as_view(),
+        name='auth-cambiar-contrasena',
     ),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('api/usuarios/', include('apps.usuarios.urls')),
