@@ -108,6 +108,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_THROTTLE_RATES': {
+        # Límite de intentos de login por IP, para mitigar fuerza bruta.
+        'login': '5/min',
+        # Ambos limitados por correo destino (ver ThrottlePorCorreoDestino),
+        # no por IP: evita que se sature la bandeja de un usuario específico.
+        'recuperar_password': '3/hour',
+        'verificar_codigo': '5/min',
+    },
 }
 
 SIMPLE_JWT = {
@@ -120,6 +128,22 @@ CORS_ALLOWED_ORIGINS = [
     for origin in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
     if origin.strip()
 ]
+
+
+# Correo saliente (feature 004 · Recuperar contraseña)
+# En desarrollo (DEBUG=True) los correos se imprimen en la consola del
+# runserver en vez de enviarse de verdad, para no requerir credenciales SMTP
+# reales en el entorno local.
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend',
+)
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-reply@flebosil-erp.net')
 
 
 # Password validation
