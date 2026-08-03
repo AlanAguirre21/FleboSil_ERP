@@ -3,7 +3,10 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
@@ -118,3 +121,66 @@ class VerificarCodigoSerializer(serializers.Serializer):
         registro = self.validated_data['registro']
         registro.verificado = True
         registro.save(update_fields=['verificado'])
+
+
+class CambiarContrasenaSerializer(serializers.Serializer):
+    """Último paso del flujo de recuperación: exige que exista, para ese
+    correo, un `CodigoRecuperacion` ya verificado (feature 004), no usado y
+    vigente — nunca confía en que el frontend controló la navegación, el
+    backend vuelve a comprobar la prueba de identidad.
+    """
+
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+    password_confirmacion = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirmacion']:
+            raise serializers.ValidationError(
+                {'password_confirmacion': 'Las contraseñas no coinciden.'},
+            )
+
+        registro = (
+            CodigoRecuperacion.objects.filter(
+                usuario__email=attrs['email'], verificado=True, usado=False,
+            )
+            .order_by('-creado_en')
+            .first()
+        )
+
+        if registro is None or not registro.vigente():
+            raise AuthenticationFailed(
+                'Tu sesión de recuperación expiró o no es válida. Solicita un nuevo código.',
+            )
+
+        usuario = registro.usuario
+
+        if usuario.check_password(attrs['password']):
+            raise serializers.ValidationError(
+                {'password': ['La nueva contraseña no puede ser igual a la anterior.']},
+            )
+
+        try:
+            validate_password(attrs['password'], user=usuario)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({'password': list(exc.messages)}) from exc
+
+        attrs['usuario'] = usuario
+        attrs['registro'] = registro
+        return attrs
+
+    def guardar(self):
+        usuario = self.validated_data['usuario']
+        registro = self.validated_data['registro']
+
+        with transaction.atomic():
+            usuario.set_password(self.validated_data['password'])
+            usuario.save(update_fields=['password'])
+            registro.usado = True
+            registro.save(update_fields=['usado'])
+
+        refresh = RefreshToken.for_user(usuario)
+        return {
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+        }

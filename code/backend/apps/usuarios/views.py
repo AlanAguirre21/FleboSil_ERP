@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
 from .serializers import (
+    CambiarContrasenaSerializer,
     LoginSerializer,
     SolicitarRecuperacionSerializer,
     UsuarioActualSerializer,
@@ -70,3 +71,20 @@ class VerificarCodigoView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.guardar()
         return Response({'detail': 'Código verificado correctamente.'})
+
+
+class CambiarContrasenaView(GenericAPIView):
+    """POST /api/auth/cambiar-contrasena/ — cierra el flujo de recuperación.
+
+    Exige un código ya verificado y vigente (feature 004); al guardar la
+    nueva contraseña, invalida ese código de forma permanente e inicia
+    sesión automáticamente (par de tokens de la sesión normal).
+    """
+
+    serializer_class = CambiarContrasenaSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.guardar())
