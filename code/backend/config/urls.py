@@ -6,11 +6,23 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 """
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
+
+from apps.usuarios.views import (
+    LoginView,
+    SolicitarRecuperacionView,
+    VerificarCodigoView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/token/', TokenObtainPairView.as_view(), name='token-obtain-pair'),
+    path('api/auth/login/', LoginView.as_view(), name='auth-login'),
+    path('api/auth/recuperar/', SolicitarRecuperacionView.as_view(), name='auth-recuperar'),
+    path(
+        'api/auth/verificar-codigo/',
+        VerificarCodigoView.as_view(),
+        name='auth-verificar-codigo',
+    ),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('api/usuarios/', include('apps.usuarios.urls')),
     path('api/inventario/', include('apps.inventario.urls')),
