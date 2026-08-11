@@ -2,19 +2,24 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
+import { useAuth } from '../../context/AuthContext'
 import { useAlertasStock } from '../../hooks/useAlertasStock'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
 import { Header } from './Header'
 
 vi.mock('../../hooks/useUsuarioActual')
 vi.mock('../../hooks/useAlertasStock')
+vi.mock('../../context/AuthContext')
 
 function renderHeader() {
-  return render(
+  const logoutMock = vi.fn()
+  useAuth.mockReturnValue({ logout: logoutMock })
+  render(
     <MemoryRouter>
       <Header onToggleSidebar={() => {}} />
     </MemoryRouter>,
   )
+  return { logoutMock }
 }
 
 describe('Header', () => {
@@ -77,5 +82,16 @@ describe('Header', () => {
 
     expect(screen.getByText(/cargando alertas/i)).toBeInTheDocument()
     expect(screen.queryByText(/sin alertas de stock/i)).not.toBeInTheDocument()
+  })
+
+  it('cerrar sesión invalida la sesión activa', () => {
+    useUsuarioActual.mockReturnValue({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    useAlertasStock.mockReturnValue({ data: [] })
+
+    const { logoutMock } = renderHeader()
+    fireEvent.click(screen.getByRole('button', { name: /ana/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cerrar sesión/i }))
+
+    expect(logoutMock).toHaveBeenCalled()
   })
 })

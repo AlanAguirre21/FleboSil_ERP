@@ -1,53 +1,35 @@
+@reference "../../index.css";
+
 .sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  background: var(--color-fondo);
-  border-right: 1px solid rgba(0, 0, 0, 0.1);
-  transition: width 0.2s ease, transform 0.2s ease;
-  overflow: hidden;
+  @apply w-[220px] shrink-0 bg-fondo border-r border-black/10 overflow-hidden transition-[width,transform] duration-200 ease-in-out;
 }
 
 .sidebar.colapsado {
-  width: 0;
+  @apply w-0;
 }
 
 .lista {
-  list-style: none;
-  margin: 0;
-  padding: 8px 0;
-  white-space: nowrap;
+  @apply list-none m-0 py-2 whitespace-nowrap;
 }
 
 .enlace {
-  display: block;
-  padding: 12px 20px;
-  color: var(--color-texto);
-  text-decoration: none;
-  font-size: 0.9rem;
+  @apply block px-5 py-3 text-texto no-underline text-[0.9rem];
 }
 
 .enlace:hover {
-  background: rgba(0, 0, 0, 0.05);
+  @apply bg-black/5;
 }
 
 .activo {
-  color: var(--color-primario);
-  font-weight: 600;
-  border-left: 3px solid var(--color-primario);
+  @apply text-primario font-semibold border-l-[3px] border-primario;
 }
 
 @media (max-width: 768px) {
   .sidebar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 20;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+    @apply absolute top-0 left-0 bottom-0 z-20 shadow-[2px_0_8px_rgba(0,0,0,0.15)];
   }
 
   .sidebar.colapsado {
-    transform: translateX(-100%);
-    width: 220px;
+    @apply w-[220px] -translate-x-full;
   }
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
 import { Footer } from './Footer'
@@ -20,7 +20,7 @@ export function MainLayout() {
   }
 
   if (isError) {
-    return <div className={styles.estado}>No hay una sesión activa.</div>
+    return <Navigate to="/login" replace />
   }
 
   return (
