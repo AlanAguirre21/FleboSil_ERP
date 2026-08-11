@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
-import { clearToken } from '../../api/client'
+import { useAuth } from '../../context/AuthContext'
 import { useAlertasStock } from '../../hooks/useAlertasStock'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
 import styles from './Header.module.css'
@@ -11,12 +11,14 @@ export function Header({ onToggleSidebar }) {
   const { data: alertas, isLoading: alertasCargando } = useAlertasStock()
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false)
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const { logout } = useAuth()
+  const navigate = useNavigate()
 
   const totalAlertas = alertas?.length ?? 0
 
   function cerrarSesion() {
-    clearToken()
-    window.location.assign('/')
+    logout()
+    navigate('/login', { replace: true })
   }
 
   return (
