@@ -1,27 +1,17 @@
+@reference "../../index.css";
+
 .layout {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  @apply flex flex-col h-screen;
 }
 
 .cuerpo {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  position: relative;
+  @apply flex flex-1 min-h-0 relative;
 }
 
 .contenido {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
+  @apply flex-1 p-6 overflow-y-auto;
 }
 
 .estado {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  font-family: var(--font-family-base);
-  color: var(--color-texto);
+  @apply flex items-center justify-center min-h-screen font-base text-texto;
 }

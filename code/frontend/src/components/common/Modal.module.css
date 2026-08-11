@@ -1,0 +1,25 @@
+@reference "../../index.css";
+
+.overlay {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50;
+}
+
+.contenido {
+  @apply w-full max-w-[480px] max-h-[90vh] overflow-y-auto bg-fondo rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.25)];
+}
+
+.encabezado {
+  @apply flex items-center justify-between px-6 py-4 border-b border-black/10;
+}
+
+.titulo {
+  @apply m-0 text-texto text-lg font-semibold;
+}
+
+.botonCerrar {
+  @apply bg-transparent border-0 text-texto text-xl cursor-pointer leading-none p-1;
+}
+
+.cuerpo {
+  @apply px-6 py-5;
+}

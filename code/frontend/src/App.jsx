@@ -2,7 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { MainLayout } from './components/layout/MainLayout'
+import { AuthProvider } from './context/AuthContext'
+import { CambiarContrasena } from './pages/CambiarContrasena/CambiarContrasena'
 import { Dashboard } from './pages/Dashboard/Dashboard'
+import { Login } from './pages/Login/Login'
+import { RecuperarContrasena } from './pages/RecuperarContrasena/RecuperarContrasena'
+import { Sucursales } from './pages/Sucursales/Sucursales'
 
 const queryClient = new QueryClient()
 
@@ -19,13 +24,19 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
-          <Route element={<MainLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/informacion-usuario" element={<InformacionUsuarioPlaceholder />} />
-          </Route>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
+            <Route path="/cambiar-contrasena" element={<CambiarContrasena />} />
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/sucursales" element={<Sucursales />} />
+              <Route path="/informacion-usuario" element={<InformacionUsuarioPlaceholder />} />
+            </Route>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   )
