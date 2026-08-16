@@ -9,15 +9,15 @@
 }
 
 .tabla thead th {
-  @apply px-4 py-3 bg-black/[0.03] text-texto font-semibold border-b border-black/10 whitespace-nowrap;
+  @apply px-4 py-3 bg-texto/[0.03] text-texto font-semibold border-b border-texto/10 whitespace-nowrap;
 }
 
 .tabla tbody td {
-  @apply px-4 py-3 border-b border-black/5 text-texto;
+  @apply px-4 py-3 border-b border-texto/5 text-texto;
 }
 
 .tabla tbody tr:hover {
-  @apply bg-black/[0.02];
+  @apply bg-texto/[0.02];
 }
 
 .vacio {

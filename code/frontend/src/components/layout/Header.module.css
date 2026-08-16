@@ -51,7 +51,7 @@
 }
 
 .dropdown {
-  @apply absolute top-[calc(100%+8px)] right-0 min-w-[220px] bg-fondo text-texto rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.2)] overflow-hidden z-10;
+  @apply absolute top-[calc(100%+8px)] right-0 min-w-[220px] bg-fondo text-texto rounded-lg shadow-[0_4px_16px_color-mix(in_srgb,var(--color-texto)_20%,transparent)] overflow-hidden z-10;
 }
 
 .dropdownVacio {
@@ -63,7 +63,7 @@
 }
 
 .listaAlertas li {
-  @apply flex flex-col px-4 py-[10px] border-b border-black/[0.08] text-[0.85rem];
+  @apply flex flex-col px-4 py-[10px] border-b border-texto/[0.08] text-[0.85rem];
 }
 
 .listaAlertas li span {
@@ -75,5 +75,5 @@
 }
 
 .itemMenu:hover {
-  @apply bg-black/5;
+  @apply bg-texto/5;
 }

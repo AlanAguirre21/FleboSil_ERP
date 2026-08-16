@@ -1,8 +1,14 @@
 import { NavLink } from 'react-router-dom'
 
+import type { ModuloMenu } from '../../api/usuarios'
 import styles from './Sidebar.module.css'
 
-export function Sidebar({ modulos, colapsado }) {
+interface SidebarProps {
+  modulos: ModuloMenu[]
+  colapsado: boolean
+}
+
+export function Sidebar({ modulos, colapsado }: SidebarProps) {
   return (
     <aside className={`${styles.sidebar} ${colapsado ? styles.colapsado : ''}`}>
       <nav>

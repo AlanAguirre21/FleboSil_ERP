@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
@@ -15,7 +15,7 @@ export function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  async function alEnviar(evento) {
+  async function alEnviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     setError('')
 
@@ -38,7 +38,11 @@ export function Login() {
       await login(email, password)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err.response?.data?.detail ?? MENSAJE_ERROR_PREDETERMINADO)
+      const detalle =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(detalle ?? MENSAJE_ERROR_PREDETERMINADO)
     } finally {
       setCargando(false)
     }

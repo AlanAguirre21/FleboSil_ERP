@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
+import type { ModuloMenu } from '../../api/usuarios'
 import { Sidebar } from './Sidebar'
 
 const MODULOS_OPERADOR = [
@@ -18,7 +19,7 @@ const MODULOS_ADMIN = [
   { slug: 'configuracion_fiscal', nombre: 'Configuración Fiscal', ruta: '/configuracion-fiscal' },
 ]
 
-function renderSidebar(modulos) {
+function renderSidebar(modulos: ModuloMenu[]) {
   return render(
     <MemoryRouter>
       <Sidebar modulos={modulos} colapsado={false} />
