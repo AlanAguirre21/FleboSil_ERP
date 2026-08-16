@@ -1,13 +1,29 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 
 import { BotonPrimario } from '../../components/common/BotonPrimario'
 import { Modal } from '../../components/common/Modal'
-import { Tabla } from '../../components/common/Tabla'
-import { useCrearSucursal, useDesactivarSucursal, useEditarSucursal, useSucursales } from '../../hooks/useSucursales'
+import { Tabla, type ColumnaTabla } from '../../components/common/Tabla'
+import type { Sucursal, SucursalFormulario } from '../../api/sucursales'
+import {
+  useCrearSucursal,
+  useDesactivarSucursal,
+  useEditarSucursal,
+  useReactivarSucursal,
+  useSucursales,
+} from '../../hooks/useSucursales'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
 import styles from './Sucursales.module.css'
 
-const SUCURSAL_VACIA = { nombre_sucursal: '', ubicacion_sucursal: '', telefono_sucursal: '' }
+const SUCURSAL_VACIA: SucursalFormulario = {
+  nombre_sucursal: '',
+  ubicacion_sucursal: '',
+  telefono_sucursal: '',
+}
+
+interface ErrorGuardarSucursal {
+  detail?: string
+  nombre_sucursal?: string[]
+}
 
 export function Sucursales() {
   const { data: usuario } = useUsuarioActual()
@@ -15,12 +31,15 @@ export function Sucursales() {
   const crear = useCrearSucursal()
   const editar = useEditarSucursal()
   const desactivar = useDesactivarSucursal()
+  const reactivar = useReactivarSucursal()
 
   const [formularioAbierto, setFormularioAbierto] = useState(false)
-  const [sucursalEnEdicion, setSucursalEnEdicion] = useState(null)
-  const [valores, setValores] = useState(SUCURSAL_VACIA)
+  const [sucursalEnEdicion, setSucursalEnEdicion] = useState<Sucursal | null>(null)
+  const [valores, setValores] = useState<SucursalFormulario>(SUCURSAL_VACIA)
   const [errorFormulario, setErrorFormulario] = useState('')
-  const [sucursalADesactivar, setSucursalADesactivar] = useState(null)
+  const [sucursalADesactivar, setSucursalADesactivar] = useState<Sucursal | null>(null)
+  const [sucursalAReactivar, setSucursalAReactivar] = useState<Sucursal | null>(null)
+  const [errorReactivar, setErrorReactivar] = useState('')
 
   const esAdmin = usuario?.rol === 'admin'
 
@@ -31,7 +50,7 @@ export function Sucursales() {
     setFormularioAbierto(true)
   }
 
-  function abrirEditar(sucursal) {
+  function abrirEditar(sucursal: Sucursal) {
     setSucursalEnEdicion(sucursal)
     setValores({
       nombre_sucursal: sucursal.nombre_sucursal,
@@ -46,7 +65,7 @@ export function Sucursales() {
     setFormularioAbierto(false)
   }
 
-  async function alGuardar(evento) {
+  const alGuardar = async (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault()
     setErrorFormulario('')
 
@@ -63,7 +82,10 @@ export function Sucursales() {
       }
       setFormularioAbierto(false)
     } catch (err) {
-      const datos = err.response?.data
+      const datos =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: ErrorGuardarSucursal } }).response?.data
+          : undefined
       setErrorFormulario(
         datos?.detail ?? datos?.nombre_sucursal?.[0] ?? 'No se pudo guardar la sucursal. Intenta de nuevo.',
       )
@@ -71,11 +93,40 @@ export function Sucursales() {
   }
 
   async function confirmarDesactivar() {
+    if (!sucursalADesactivar) return
     await desactivar.mutateAsync(sucursalADesactivar.id)
     setSucursalADesactivar(null)
   }
 
-  const columnas = [
+  function abrirReactivar(sucursal: Sucursal) {
+    setErrorReactivar('')
+    setSucursalAReactivar(sucursal)
+  }
+
+  function cerrarReactivar() {
+    setErrorReactivar('')
+    setSucursalAReactivar(null)
+  }
+
+  async function confirmarReactivar() {
+    if (!sucursalAReactivar) return
+    setErrorReactivar('')
+
+    try {
+      await reactivar.mutateAsync(sucursalAReactivar.id)
+      setSucursalAReactivar(null)
+    } catch (err) {
+      const datos =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: ErrorGuardarSucursal } }).response?.data
+          : undefined
+      setErrorReactivar(
+        datos?.detail ?? datos?.nombre_sucursal?.[0] ?? 'No se pudo reactivar la sucursal. Intenta de nuevo.',
+      )
+    }
+  }
+
+  const columnas: ColumnaTabla<Sucursal>[] = [
     { clave: 'nombre_sucursal', encabezado: 'Nombre' },
     { clave: 'ubicacion_sucursal', encabezado: 'Ubicación' },
     { clave: 'telefono_sucursal', encabezado: 'Teléfono' },
@@ -111,13 +162,17 @@ export function Sucursales() {
                     <button type="button" className={styles.enlaceAccion} onClick={() => abrirEditar(fila)}>
                       Editar
                     </button>
-                    {fila.activo && (
+                    {fila.activo ? (
                       <button
                         type="button"
                         className={styles.enlaceAccionPeligro}
                         onClick={() => setSucursalADesactivar(fila)}
                       >
                         Desactivar
+                      </button>
+                    ) : (
+                      <button type="button" className={styles.enlaceAccion} onClick={() => abrirReactivar(fila)}>
+                        Reactivar
                       </button>
                     )}
                   </div>
@@ -193,6 +248,28 @@ export function Sucursales() {
           </BotonPrimario>
           <BotonPrimario variante="peligro" onClick={confirmarDesactivar} disabled={desactivar.isPending}>
             {desactivar.isPending ? 'Desactivando…' : 'Desactivar'}
+          </BotonPrimario>
+        </div>
+      </Modal>
+
+      <Modal titulo="Reactivar sucursal" abierto={Boolean(sucursalAReactivar)} onCerrar={cerrarReactivar}>
+        <p className={styles.textoConfirmacion}>
+          ¿Confirmas que quieres reactivar la sucursal "{sucursalAReactivar?.nombre_sucursal}"? Volverá a estar
+          disponible para nuevos movimientos de inventario.
+        </p>
+
+        {errorReactivar && (
+          <p className={styles.error} role="alert">
+            {errorReactivar}
+          </p>
+        )}
+
+        <div className={styles.accionesFormulario}>
+          <BotonPrimario variante="secundario" onClick={cerrarReactivar}>
+            Cancelar
+          </BotonPrimario>
+          <BotonPrimario onClick={confirmarReactivar} disabled={reactivar.isPending}>
+            {reactivar.isPending ? 'Reactivando…' : 'Reactivar'}
           </BotonPrimario>
         </div>
       </Modal>

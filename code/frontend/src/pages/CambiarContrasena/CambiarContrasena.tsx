@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { cambiarContrasena } from '../../api/auth'
@@ -9,11 +9,22 @@ const MENSAJE_SIN_CONTEXTO =
   'Tu sesión de recuperación expiró o no es válida. Solicita un nuevo código.'
 const MENSAJE_ERROR_GENERICO = 'No se pudo cambiar la contraseña. Intenta de nuevo.'
 
+interface EstadoNavegacion {
+  email?: string
+}
+
+interface ErrorCambioContrasena {
+  detail?: string
+  password?: string[]
+  password_confirmacion?: string[]
+}
+
 export function CambiarContrasena() {
   const location = useLocation()
   const navigate = useNavigate()
   const { iniciarSesionConTokens } = useAuth()
-  const email = location.state?.email
+  const estadoNavegacion = location.state as EstadoNavegacion | null
+  const email = estadoNavegacion?.email
 
   const [password, setPassword] = useState('')
   const [confirmacion, setConfirmacion] = useState('')
@@ -26,7 +37,7 @@ export function CambiarContrasena() {
     )
   }
 
-  async function alEnviar(evento) {
+  const alEnviar = async (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault()
     setError('')
 
@@ -46,7 +57,10 @@ export function CambiarContrasena() {
       iniciarSesionConTokens(access, refresh)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      const datos = err.response?.data
+      const datos =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: ErrorCambioContrasena } }).response?.data
+          : undefined
       setError(
         datos?.detail ??
           datos?.password?.[0] ??

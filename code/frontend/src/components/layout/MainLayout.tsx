@@ -19,7 +19,7 @@ export function MainLayout() {
     return <div className={styles.estado}>Cargando…</div>
   }
 
-  if (isError) {
+  if (isError || !usuario) {
     return <Navigate to="/login" replace />
   }
 

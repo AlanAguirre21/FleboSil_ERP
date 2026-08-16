@@ -11,9 +11,24 @@ vi.mock('../../hooks/useUsuarioActual')
 vi.mock('../../hooks/useAlertasStock')
 vi.mock('../../context/AuthContext')
 
+// Los mocks solo necesitan el subconjunto de campos que Header realmente lee;
+// completar todo el tipo UseQueryResult en cada test sería ruido sin valor real.
+function mockUsuarioActual(data: unknown) {
+  vi.mocked(useUsuarioActual).mockReturnValue(data as ReturnType<typeof useUsuarioActual>)
+}
+
+function mockAlertasStock(data: unknown) {
+  vi.mocked(useAlertasStock).mockReturnValue(data as ReturnType<typeof useAlertasStock>)
+}
+
 function renderHeader() {
   const logoutMock = vi.fn()
-  useAuth.mockReturnValue({ logout: logoutMock })
+  vi.mocked(useAuth).mockReturnValue({
+    autenticado: true,
+    login: vi.fn(),
+    logout: logoutMock,
+    iniciarSesionConTokens: vi.fn(),
+  })
   render(
     <MemoryRouter>
       <Header onToggleSidebar={() => {}} />
@@ -24,8 +39,8 @@ function renderHeader() {
 
 describe('Header', () => {
   it('el logo enlaza al Dashboard', () => {
-    useUsuarioActual.mockReturnValue({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    useAlertasStock.mockReturnValue({ data: [] })
+    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    mockAlertasStock({ data: [] })
 
     renderHeader()
 
@@ -33,8 +48,8 @@ describe('Header', () => {
   })
 
   it('muestra el contador de notificaciones cuando hay alertas de stock', () => {
-    useUsuarioActual.mockReturnValue({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    useAlertasStock.mockReturnValue({
+    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    mockAlertasStock({
       data: [
         { tipo: 'producto', nombre: 'Suero', sucursal: 'Matriz', stock_actual: 1, stock_minimo: 5 },
         { tipo: 'materia_prima', nombre: 'Cloruro', sucursal: 'Matriz', stock_actual: 1, stock_minimo: 5 },
@@ -47,8 +62,8 @@ describe('Header', () => {
   })
 
   it('no muestra contador cuando no hay alertas', () => {
-    useUsuarioActual.mockReturnValue({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    useAlertasStock.mockReturnValue({ data: [] })
+    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    mockAlertasStock({ data: [] })
 
     renderHeader()
 
@@ -56,8 +71,8 @@ describe('Header', () => {
   })
 
   it('el dropdown lista nombre y sucursal de cada ítem en alerta', () => {
-    useUsuarioActual.mockReturnValue({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    useAlertasStock.mockReturnValue({
+    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    mockAlertasStock({
       data: [
         { tipo: 'producto', nombre: 'Suero', sucursal: 'Matriz', stock_actual: 1, stock_minimo: 5 },
         { tipo: 'materia_prima', nombre: 'Cloruro', sucursal: 'Norte', stock_actual: 1, stock_minimo: 5 },
@@ -74,8 +89,8 @@ describe('Header', () => {
   })
 
   it('muestra estado de carga en vez de afirmar que no hay alertas', () => {
-    useUsuarioActual.mockReturnValue({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    useAlertasStock.mockReturnValue({ data: undefined, isLoading: true })
+    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    mockAlertasStock({ data: undefined, isLoading: true })
 
     renderHeader()
     fireEvent.click(screen.getByRole('button', { name: /alertas de stock/i }))
@@ -85,8 +100,8 @@ describe('Header', () => {
   })
 
   it('cerrar sesión invalida la sesión activa', () => {
-    useUsuarioActual.mockReturnValue({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    useAlertasStock.mockReturnValue({ data: [] })
+    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    mockAlertasStock({ data: [] })
 
     const { logoutMock } = renderHeader()
     fireEvent.click(screen.getByRole('button', { name: /ana/i }))

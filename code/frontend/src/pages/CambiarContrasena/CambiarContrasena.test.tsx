@@ -19,7 +19,13 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../api/auth')
 vi.mock('../../context/AuthContext')
 
-function renderPantalla({ state } = {}) {
+const cambiarContrasenaMock = vi.mocked(cambiarContrasena)
+
+function mockAuth(data: unknown) {
+  vi.mocked(useAuth).mockReturnValue(data as ReturnType<typeof useAuth>)
+}
+
+function renderPantalla({ state }: { state?: unknown } = {}) {
   return render(
     <MemoryRouter
       initialEntries={[{ pathname: '/cambiar-contrasena', state }]}
@@ -38,7 +44,7 @@ afterEach(() => {
 
 describe('CambiarContrasena', () => {
   it('redirige a /recuperar-contrasena si no hay correo en el estado de navegación', () => {
-    useAuth.mockReturnValue({ iniciarSesionConTokens: vi.fn() })
+    mockAuth({ iniciarSesionConTokens: vi.fn() })
 
     renderPantalla()
 
@@ -46,7 +52,7 @@ describe('CambiarContrasena', () => {
   })
 
   it('renderiza el formulario cuando hay un correo validado en el estado', () => {
-    useAuth.mockReturnValue({ iniciarSesionConTokens: vi.fn() })
+    mockAuth({ iniciarSesionConTokens: vi.fn() })
 
     renderPantalla({ state: { email: 'ana@flebosil.test' } })
 
@@ -56,8 +62,8 @@ describe('CambiarContrasena', () => {
 
   it('muestra un error si las contraseñas no coinciden, sin llamar al backend', () => {
     const cambiarMock = vi.fn()
-    cambiarContrasena.mockImplementation(cambiarMock)
-    useAuth.mockReturnValue({ iniciarSesionConTokens: vi.fn() })
+    cambiarContrasenaMock.mockImplementation(cambiarMock)
+    mockAuth({ iniciarSesionConTokens: vi.fn() })
 
     renderPantalla({ state: { email: 'ana@flebosil.test' } })
     fireEvent.change(screen.getByLabelText(/^nueva contraseña$/i), {
@@ -73,9 +79,9 @@ describe('CambiarContrasena', () => {
   })
 
   it('inicia sesión con los tokens recibidos y redirige al Dashboard tras éxito', async () => {
-    cambiarContrasena.mockResolvedValue({ access: 'token-acceso', refresh: 'token-refresh' })
+    cambiarContrasenaMock.mockResolvedValue({ access: 'token-acceso', refresh: 'token-refresh' })
     const iniciarSesionConTokensMock = vi.fn()
-    useAuth.mockReturnValue({ iniciarSesionConTokens: iniciarSesionConTokensMock })
+    mockAuth({ iniciarSesionConTokens: iniciarSesionConTokensMock })
 
     renderPantalla({ state: { email: 'ana@flebosil.test' } })
     fireEvent.change(screen.getByLabelText(/^nueva contraseña$/i), {
@@ -90,7 +96,7 @@ describe('CambiarContrasena', () => {
       expect(iniciarSesionConTokensMock).toHaveBeenCalledWith('token-acceso', 'token-refresh'),
     )
     expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true })
-    expect(cambiarContrasena).toHaveBeenCalledWith(
+    expect(cambiarContrasenaMock).toHaveBeenCalledWith(
       'ana@flebosil.test',
       'clave-nueva-456',
       'clave-nueva-456',
@@ -98,10 +104,10 @@ describe('CambiarContrasena', () => {
   })
 
   it('muestra el mensaje específico del backend ante una contraseña que no cumple requisitos', async () => {
-    cambiarContrasena.mockRejectedValue({
+    cambiarContrasenaMock.mockRejectedValue({
       response: { data: { password: ['Esta contraseña es demasiado corta.'] } },
     })
-    useAuth.mockReturnValue({ iniciarSesionConTokens: vi.fn() })
+    mockAuth({ iniciarSesionConTokens: vi.fn() })
 
     renderPantalla({ state: { email: 'ana@flebosil.test' } })
     fireEvent.change(screen.getByLabelText(/^nueva contraseña$/i), { target: { value: '123' } })

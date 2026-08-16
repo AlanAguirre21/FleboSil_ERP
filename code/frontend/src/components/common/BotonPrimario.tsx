@@ -1,12 +1,25 @@
+import type { ButtonHTMLAttributes } from 'react'
+
 import styles from './BotonPrimario.module.css'
 
-const CLASES_POR_VARIANTE = {
+type Variante = 'primario' | 'secundario' | 'peligro'
+
+const CLASES_POR_VARIANTE: Record<Variante, string> = {
   primario: 'primario',
   secundario: 'secundario',
   peligro: 'peligro',
 }
 
-export function BotonPrimario({ children, variante = 'primario', type = 'button', ...props }) {
+interface BotonPrimarioProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variante?: Variante
+}
+
+export function BotonPrimario({
+  children,
+  variante = 'primario',
+  type = 'button',
+  ...props
+}: BotonPrimarioProps) {
   return (
     <button type={type} className={styles[CLASES_POR_VARIANTE[variante]]} {...props}>
       {children}

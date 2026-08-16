@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { crearSucursal, desactivarSucursal, editarSucursal, getSucursales } from '../api/sucursales'
+import {
+  crearSucursal,
+  desactivarSucursal,
+  editarSucursal,
+  getSucursales,
+  reactivarSucursal,
+  type SucursalFormulario,
+} from '../api/sucursales'
 
 const CLAVE_SUCURSALES = ['sucursales']
 
@@ -22,7 +29,8 @@ export function useCrearSucursal() {
 export function useEditarSucursal() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, datos }) => editarSucursal(id, datos),
+    mutationFn: ({ id, datos }: { id: number; datos: SucursalFormulario }) =>
+      editarSucursal(id, datos),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CLAVE_SUCURSALES }),
   })
 }
@@ -31,6 +39,14 @@ export function useDesactivarSucursal() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: desactivarSucursal,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLAVE_SUCURSALES }),
+  })
+}
+
+export function useReactivarSucursal() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: reactivarSucursal,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CLAVE_SUCURSALES }),
   })
 }

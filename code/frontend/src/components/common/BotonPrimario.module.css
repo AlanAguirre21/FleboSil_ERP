@@ -17,7 +17,7 @@
 }
 
 .secundario:hover {
-  @apply bg-black/5;
+  @apply bg-texto/5;
 }
 
 .secundario:disabled {

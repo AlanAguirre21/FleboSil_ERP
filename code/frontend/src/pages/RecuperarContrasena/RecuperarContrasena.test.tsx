@@ -17,7 +17,10 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('../../api/auth')
 
-function renderPantalla({ state } = {}) {
+const solicitarRecuperacionMock = vi.mocked(solicitarRecuperacion)
+const verificarCodigoMock = vi.mocked(verificarCodigo)
+
+function renderPantalla({ state }: { state?: unknown } = {}) {
   return render(
     <MemoryRouter initialEntries={[{ pathname: '/recuperar-contrasena', state }]}>
       <RecuperarContrasena />
@@ -33,8 +36,8 @@ async function avanzarAlPasoDeCodigo(email = 'ana@flebosil.test') {
 
 afterEach(() => {
   navigateMock.mockClear()
-  solicitarRecuperacion.mockClear()
-  verificarCodigo.mockClear()
+  solicitarRecuperacionMock.mockClear()
+  verificarCodigoMock.mockClear()
 })
 
 describe('RecuperarContrasena', () => {
@@ -57,32 +60,32 @@ describe('RecuperarContrasena', () => {
   })
 
   it('tras enviar el correo, muestra el paso de verificación con el mensaje genérico', async () => {
-    solicitarRecuperacion.mockResolvedValue({
+    solicitarRecuperacionMock.mockResolvedValue({
       detail: 'Si el correo está registrado, te enviamos un código de verificación.',
     })
 
     renderPantalla()
     await avanzarAlPasoDeCodigo()
 
-    expect(solicitarRecuperacion).toHaveBeenCalledWith('ana@flebosil.test')
+    expect(solicitarRecuperacionMock).toHaveBeenCalledWith('ana@flebosil.test')
     expect(
       screen.getByText(/si el correo está registrado, te enviamos un código/i),
     ).toBeInTheDocument()
   })
 
   it('reenviar código vuelve a llamar a solicitarRecuperacion con el mismo correo', async () => {
-    solicitarRecuperacion.mockResolvedValue({ detail: 'ok' })
+    solicitarRecuperacionMock.mockResolvedValue({ detail: 'ok' })
 
     renderPantalla()
     await avanzarAlPasoDeCodigo()
     fireEvent.click(screen.getByRole('button', { name: /reenviar código/i }))
 
-    await waitFor(() => expect(solicitarRecuperacion).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(solicitarRecuperacionMock).toHaveBeenCalledTimes(2))
   })
 
   it('redirige a /cambiar-contrasena con el correo tras un código correcto', async () => {
-    solicitarRecuperacion.mockResolvedValue({ detail: 'ok' })
-    verificarCodigo.mockResolvedValue({ detail: 'Código verificado correctamente.' })
+    solicitarRecuperacionMock.mockResolvedValue({ detail: 'ok' })
+    verificarCodigoMock.mockResolvedValue({ detail: 'Código verificado correctamente.' })
 
     renderPantalla()
     await avanzarAlPasoDeCodigo('ana@flebosil.test')
@@ -100,8 +103,8 @@ describe('RecuperarContrasena', () => {
   })
 
   it('muestra un mensaje de error si el código es inválido o expiró', async () => {
-    solicitarRecuperacion.mockResolvedValue({ detail: 'ok' })
-    verificarCodigo.mockRejectedValue({
+    solicitarRecuperacionMock.mockResolvedValue({ detail: 'ok' })
+    verificarCodigoMock.mockRejectedValue({
       response: { data: { detail: 'Código inválido o expirado.' } },
     })
 

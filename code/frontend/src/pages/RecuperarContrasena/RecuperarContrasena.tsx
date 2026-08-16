@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { solicitarRecuperacion, verificarCodigo } from '../../api/auth'
@@ -8,13 +8,18 @@ const MENSAJE_ENVIO_GENERICO = 'Si el correo está registrado, te enviamos un c�
 const MENSAJE_ERROR_CODIGO = 'Código inválido o expirado.'
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+interface EstadoNavegacion {
+  mensaje?: string
+}
+
 export function RecuperarContrasena() {
   const location = useLocation()
-  const [paso, setPaso] = useState('correo')
+  const estadoNavegacion = location.state as EstadoNavegacion | null
+  const [paso, setPaso] = useState<'correo' | 'codigo'>('correo')
   const [email, setEmail] = useState('')
   const [codigo, setCodigo] = useState('')
   const [mensaje, setMensaje] = useState('')
-  const [error, setError] = useState(location.state?.mensaje ?? '')
+  const [error, setError] = useState(estadoNavegacion?.mensaje ?? '')
   const [cargando, setCargando] = useState(false)
   const navigate = useNavigate()
 
@@ -27,7 +32,7 @@ export function RecuperarContrasena() {
     }
   }
 
-  async function alEnviarCorreo(evento) {
+  async function alEnviarCorreo(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     setError('')
 
@@ -53,7 +58,7 @@ export function RecuperarContrasena() {
     setCargando(false)
   }
 
-  async function alVerificarCodigo(evento) {
+  async function alVerificarCodigo(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     setError('')
 
@@ -67,7 +72,11 @@ export function RecuperarContrasena() {
       await verificarCodigo(email, codigo)
       navigate('/cambiar-contrasena', { replace: true, state: { email } })
     } catch (err) {
-      setError(err.response?.data?.detail ?? MENSAJE_ERROR_CODIGO)
+      const detalle =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(detalle ?? MENSAJE_ERROR_CODIGO)
     } finally {
       setCargando(false)
     }

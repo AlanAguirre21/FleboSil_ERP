@@ -1,6 +1,18 @@
 import { apiClient } from './client'
 
-export async function getUsuarioActual() {
-  const { data } = await apiClient.get('/usuarios/me/')
+export interface ModuloMenu {
+  slug: string
+  nombre: string
+  ruta: string
+}
+
+export interface Usuario {
+  nombre: string
+  rol: 'admin' | 'operador'
+  modulos: ModuloMenu[]
+}
+
+export async function getUsuarioActual(): Promise<Usuario> {
+  const { data } = await apiClient.get<Usuario>('/usuarios/me/')
   return data
 }

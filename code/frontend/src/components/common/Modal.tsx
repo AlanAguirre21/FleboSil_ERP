@@ -1,6 +1,15 @@
+import type { ReactNode } from 'react'
+
 import styles from './Modal.module.css'
 
-export function Modal({ titulo, abierto, onCerrar, children }) {
+interface ModalProps {
+  titulo: string
+  abierto: boolean
+  onCerrar: () => void
+  children: ReactNode
+}
+
+export function Modal({ titulo, abierto, onCerrar, children }: ModalProps) {
   if (!abierto) return null
 
   return (
