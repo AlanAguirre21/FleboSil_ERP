@@ -1,5 +1,21 @@
 # FOLDERS
 #/spec
+/.claude
 
 # FILES
 Base de Datos Flebosil.txt
+CLAUDE.md
+skills-lock.json
+
+# Python / Django
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+staticfiles/
+.pytest_cache/
+
+# Env / secrets
+.env
+.env.*
+!.env.example

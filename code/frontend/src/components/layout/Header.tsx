@@ -6,7 +6,11 @@ import { useAlertasStock } from '../../hooks/useAlertasStock'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
 import styles from './Header.module.css'
 
-export function Header({ onToggleSidebar }) {
+interface HeaderProps {
+  onToggleSidebar: () => void
+}
+
+export function Header({ onToggleSidebar }: HeaderProps) {
   const { data: usuario } = useUsuarioActual()
   const { data: alertas, isLoading: alertasCargando } = useAlertasStock()
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false)
@@ -61,7 +65,7 @@ export function Header({ onToggleSidebar }) {
                 <p className={styles.dropdownVacio}>Sin alertas de stock</p>
               ) : (
                 <ul className={styles.listaAlertas}>
-                  {alertas.map((alerta) => (
+                  {(alertas ?? []).map((alerta) => (
                     <li key={`${alerta.tipo}-${alerta.nombre}-${alerta.sucursal}`}>
                       <strong>{alerta.nombre}</strong>
                       <span>{alerta.sucursal}</span>

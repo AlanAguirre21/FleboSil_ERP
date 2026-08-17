@@ -17,6 +17,10 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('../../context/AuthContext')
 
+function mockAuth(data: unknown) {
+  vi.mocked(useAuth).mockReturnValue(data as ReturnType<typeof useAuth>)
+}
+
 function renderLogin() {
   return render(
     <MemoryRouter>
@@ -31,7 +35,7 @@ afterEach(() => {
 
 describe('Login', () => {
   it('renderiza el formulario con correo, contraseña y enlace de recuperación', () => {
-    useAuth.mockReturnValue({ login: vi.fn() })
+    mockAuth({ login: vi.fn() })
 
     renderLogin()
 
@@ -45,7 +49,7 @@ describe('Login', () => {
   })
 
   it('no muestra ningún enlace ni formulario de autorregistro', () => {
-    useAuth.mockReturnValue({ login: vi.fn() })
+    mockAuth({ login: vi.fn() })
 
     renderLogin()
 
@@ -54,7 +58,7 @@ describe('Login', () => {
 
   it('no envía el formulario si los campos están vacíos', () => {
     const loginMock = vi.fn()
-    useAuth.mockReturnValue({ login: loginMock })
+    mockAuth({ login: loginMock })
 
     renderLogin()
     fireEvent.click(screen.getByRole('button', { name: /ingresar/i }))
@@ -64,7 +68,7 @@ describe('Login', () => {
 
   it('redirige al Dashboard tras un login exitoso', async () => {
     const loginMock = vi.fn().mockResolvedValue(undefined)
-    useAuth.mockReturnValue({ login: loginMock })
+    mockAuth({ login: loginMock })
 
     renderLogin()
     fireEvent.change(screen.getByLabelText(/correo electrónico/i), {
@@ -85,7 +89,7 @@ describe('Login', () => {
     const loginMock = vi.fn().mockRejectedValue({
       response: { data: { detail: 'Correo o contraseña incorrectos.' } },
     })
-    useAuth.mockReturnValue({ login: loginMock })
+    mockAuth({ login: loginMock })
 
     renderLogin()
     fireEvent.change(screen.getByLabelText(/correo electrónico/i), {

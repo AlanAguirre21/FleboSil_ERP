@@ -1,16 +1,23 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
 import { login as loginRequest } from '../api/auth'
 import { clearTokens, getToken, setRefreshToken, setToken } from '../api/client'
 
-const AuthContext = createContext(null)
+interface AuthContextValue {
+  autenticado: boolean
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
+  iniciarSesionConTokens: (access: string, refresh: string) => void
+}
 
-export function AuthProvider({ children }) {
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [autenticado, setAutenticado] = useState(() => Boolean(getToken()))
   const queryClient = useQueryClient()
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email: string, password: string) => {
     const { access, refresh } = await loginRequest(email, password)
     setToken(access)
     setRefreshToken(refresh)
@@ -19,7 +26,7 @@ export function AuthProvider({ children }) {
 
   // Guarda tokens ya emitidos por el backend (ej. tras cambiar contraseña
   // en la feature 005), sin volver a llamar al endpoint de login.
-  const iniciarSesionConTokens = useCallback((access, refresh) => {
+  const iniciarSesionConTokens = useCallback((access: string, refresh: string) => {
     setToken(access)
     setRefreshToken(refresh)
     setAutenticado(true)

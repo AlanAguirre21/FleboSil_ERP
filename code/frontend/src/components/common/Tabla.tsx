@@ -1,6 +1,28 @@
+import type { ReactNode } from 'react'
+
 import styles from './Tabla.module.css'
 
-export function Tabla({ columnas, datos, claveFila = 'id', renderAcciones, mensajeVacio = 'Sin datos para mostrar.' }) {
+export interface ColumnaTabla<T> {
+  clave: Extract<keyof T, string>
+  encabezado: string
+  render?: (fila: T) => ReactNode
+}
+
+interface TablaProps<T> {
+  columnas: ColumnaTabla<T>[]
+  datos: T[]
+  claveFila?: keyof T
+  renderAcciones?: (fila: T) => ReactNode
+  mensajeVacio?: string
+}
+
+export function Tabla<T>({
+  columnas,
+  datos,
+  claveFila = 'id' as keyof T,
+  renderAcciones,
+  mensajeVacio = 'Sin datos para mostrar.',
+}: TablaProps<T>) {
   return (
     <div className={styles.contenedor}>
       <table className={styles.tabla}>
@@ -14,9 +36,11 @@ export function Tabla({ columnas, datos, claveFila = 'id', renderAcciones, mensa
         </thead>
         <tbody>
           {datos.map((fila) => (
-            <tr key={fila[claveFila]}>
+            <tr key={String(fila[claveFila])}>
               {columnas.map((columna) => (
-                <td key={columna.clave}>{columna.render ? columna.render(fila) : fila[columna.clave]}</td>
+                <td key={columna.clave}>
+                  {columna.render ? columna.render(fila) : (fila[columna.clave] as ReactNode)}
+                </td>
               ))}
               {renderAcciones && <td>{renderAcciones(fila)}</td>}
             </tr>
