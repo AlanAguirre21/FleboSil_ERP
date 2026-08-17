@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { MainLayout } from './components/layout/MainLayout'
 import { AuthProvider } from './context/AuthContext'
 import { CambiarContrasena } from './pages/CambiarContrasena/CambiarContrasena'
+import { Catalogo } from './pages/Catalogo/Catalogo'
 import { Dashboard } from './pages/Dashboard/Dashboard'
 import { Login } from './pages/Login/Login'
 import { RecuperarContrasena } from './pages/RecuperarContrasena/RecuperarContrasena'
@@ -32,6 +33,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/sucursales" element={<Sucursales />} />
+              <Route path="/catalogo" element={<Catalogo />} />
               <Route path="/informacion-usuario" element={<InformacionUsuarioPlaceholder />} />
             </Route>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -2,11 +2,21 @@ from django.db import models
 
 
 class Categoria(models.Model):
-    """Modelo mínimo — CRUD completo en la feature 007 · Catálogo."""
+    """CRUD completo — feature 007 · Catálogo."""
+
+    TIPO_PRODUCTO = 'producto'
+    TIPO_MATERIA_PRIMA = 'materia_prima'
+    TIPO_AMBOS = 'ambos'
+    TIPO_CHOICES = [
+        (TIPO_PRODUCTO, 'Producto'),
+        (TIPO_MATERIA_PRIMA, 'Materia prima'),
+        (TIPO_AMBOS, 'Ambos'),
+    ]
 
     nombre_categoria = models.CharField(max_length=100)
     descripcion_categoria = models.TextField(blank=True)
-    activo_categoria = models.BooleanField(default=True)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         verbose_name_plural = 'categorías'
@@ -16,9 +26,9 @@ class Categoria(models.Model):
 
 
 class Producto(models.Model):
-    """Modelo mínimo — CRUD completo en la feature 007 · Catálogo. No
-    incluye todavía todos los campos de Base de Datos FleboSil.txt (ej.
-    fecha_registro), solo lo necesario para inventario/alertas.
+    """CRUD completo — feature 007 · Catálogo. No incluye todavía todos los
+    campos de Base de Datos FleboSil.txt (ej. fecha_registro), solo lo
+    necesario para catálogo/inventario/alertas.
     """
 
     nombre_producto = models.CharField(max_length=150)
@@ -26,24 +36,27 @@ class Producto(models.Model):
     unidad_medida = models.CharField(max_length=30)
     descripcion_producto = models.TextField(blank=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, related_name='productos')
-    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    precio_venta = models.DecimalField(max_digits=12, decimal_places=2)
     costo_produccion = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    activo_producto = models.BooleanField(default=True)
+    activo = models.BooleanField(default=True)
 
     def __str__(self):
         return self.nombre_producto
 
 
 class MateriaPrima(models.Model):
-    """Modelo mínimo — CRUD completo en la feature 007 · Catálogo.
-    `proveedor_principal` (FK → Proveedores, feature 008 · Personas) se
-    agrega cuando esa feature exista.
+    """CRUD completo — feature 007 · Catálogo.
+    `proveedor_principal` (FK → Proveedores) se agrega en la feature
+    008 · Personas mediante un `AddField`, una vez exista ese modelo — una
+    FK no puede declararse hoy apuntando a un modelo que todavía no está en
+    el registro de apps de Django.
     """
 
     nombre_item = models.CharField(max_length=150)
+    categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, related_name='materias_primas')
     unidad_medida = models.CharField(max_length=30)
     costo_promedio = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    activo_item = models.BooleanField(default=True)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         verbose_name_plural = 'materias primas'

@@ -13,9 +13,6 @@ Es la base sobre la que se construye todo el módulo de inventario (`009`), comp
 La reactivación y la reutilización de nombres se agregan porque, en la operación real de la empresa, una sucursal puede cerrar temporalmente y volver a abrir después (o un admin puede desactivar una por error) — sin estas capacidades, cada cierre habría sido permanente y cada reapertura habría requerido un nombre distinto o dejar un `nombre_sucursal` "quemado" para siempre.
 
 ## Criterios de aceptación
-
-### Ya implementado
-
 - [x] Un usuario con rol admin puede crear una nueva sucursal indicando nombre, dirección y teléfono.
 - [x] Un usuario con rol admin puede editar los datos de una sucursal existente.
 - [x] Un usuario con rol admin puede desactivar una sucursal (`activo = false`), sin eliminarla físicamente de la base de datos.
@@ -26,14 +23,11 @@ La reactivación y la reutilización de nombres se agregan porque, en la operaci
 - [x] La lista de sucursales es consultable desde el módulo correspondiente sin necesidad de filtros adicionales (volumen esperado bajo, 2-3 sucursales inicialmente).
 - [x] El frontend de esta feature está implementado en TypeScript (`.tsx` para componentes, `.ts` para lógica sin JSX), pasando `npx tsc --noEmit` sin errores, según lo definido en `constitution/tech-stack.md`.
 
-### Reactivación de sucursales
-
+## Reactivación de sucursales
 - [x] Un usuario con rol admin puede reactivar una sucursal previamente desactivada, estableciendo `activo = true`.
 - [x] Al reactivar una sucursal, su inventario (`InventarioSucursalProducto`/`InventarioSucursalMateriaPrima`, feature `009`) vuelve a estar disponible de inmediato para nuevos movimientos — estas tablas no tienen un campo `activo` propio; su disponibilidad depende exclusivamente de `Sucursal.activo`, por lo que no hay ningún registro adicional que actualizar ni validar al reactivar.
 - [x] Los empleados y los movimientos de caja (`MovimientosCaja`, feature `013`) nunca se ven afectados por la activación o desactivación de una sucursal, bajo ninguna circunstancia — son entidades globales a la empresa (ver `constitution/mission.md`) y este flujo no debe tocarlos ni leerlos.
 - [x] El backend rechaza cualquier intento de reactivar una sucursal desde un usuario con rol operador, incluso llamando directo a la API.
-
-### Validación de nombre duplicado
 
 - [x] Registrar una sucursal (crear o reactivar) con el mismo `nombre_sucursal` que una sucursal ya existente se permite únicamente si **ambas** condiciones se cumplen: (a) ninguna sucursal existente con ese mismo nombre tiene la misma `ubicacion_sucursal` que la que se está registrando (dos ubicaciones vacías cuentan como coincidencia), y (b) todas las sucursales existentes con ese nombre tienen `activo = false`.
 - [x] Si existe al menos una sucursal **activa** con el mismo `nombre_sucursal`, el registro (creación o reactivación) se rechaza sin importar la ubicación.
@@ -41,25 +35,17 @@ La reactivación y la reutilización de nombres se agregan porque, en la operaci
 - [x] Esta misma validación aplica al editar el `nombre_sucursal` de una sucursal existente (esté activa o inactiva) — no es posible renombrarla hacia una colisión con una sucursal activa ya existente.
 - [x] La validación se implementa a nivel de serializer/servicio, no como restricción de base de datos — `nombre_sucursal` no tiene (ni debe tener) un `unique_together`/`unique` a nivel de modelo, dado que puede repetirse legítimamente entre sucursales inactivas.
 
-### Bloqueo de movimientos de inventario para sucursales inactivas
+- [x] Cada cambio de `activo` en una sucursal (desactivación o reactivación) genera un registro nuevo en `HistorialEstadoSucursal` (entidad de la base de datos), con al menos: sucursal, estado anterior, estado nuevo, usuario que realizó el cambio y fecha/hora.
+- [x] `HistorialEstadoSucursal` es **INSERT-only**, igual que `MovimientosCaja`/`MovimientosInventario` — ningún registro se edita ni se elimina; el historial completo de una sucursal queda siempre disponible para auditoría.
+- [x] El registro en `HistorialEstadoSucursal` se crea dentro de la misma `transaction.atomic()` que el cambio de `activo` en `Sucursal` — si uno falla, el otro tampoco se guarda.
 
 *(Sin marcar a propósito — este código vive en `009 · Inventario`/`010`/`011`/`012`, que todavía no existen. `Sucursal.activo` ya es la fuente de verdad que esas features deben consultar; ver "Pendiente" en `tasks.md`.)*
-
 - [ ] No es posible crear un nuevo `MovimientoInventario` (feature `009`) cuya sucursal asociada tenga `activo = false`; el backend rechaza el intento dentro de la misma `transaction.atomic()` de la operación que lo origina (venta, compra, producción, ajuste).
 - [ ] Esta validación aplica exclusivamente al momento de creación — no es retroactiva. Los `MovimientoInventario` ya existentes de una sucursal ahora inactiva permanecen intactos y consultables indefinidamente (patrón INSERT-only ya establecido en la constitución).
 - [ ] Al reactivar una sucursal, es posible volver a generar `MovimientoInventario` para ella a partir de ese momento, sin ninguna acción adicional.
 - [ ] `MovimientosCaja` (feature `013`) **no** lleva ninguna validación directa de sucursal — Caja es una entidad global sin FK a `Sucursal` (ver `constitution/mission.md`: "la sucursal es una dimensión de inventario, no de negocio"; `CLAUDE.md`: "profit, cash (caja)... are global to the company, never segmented by branch"). La protección para operaciones que combinan inventario y caja en una misma transacción (ej. una venta) ocurre de forma indirecta: si el paso de inventario de esa transacción es rechazado por sucursal inactiva, toda la transacción —incluido el movimiento de caja asociado— se revierte, sin que `MovimientoCaja` necesite conocer la sucursal.
 
-### `HistorialEstadoSucursal` (nueva entidad)
-
-- [x] Cada cambio de `activo` en una sucursal (desactivación o reactivación) genera un registro nuevo en `HistorialEstadoSucursal`, con al menos: sucursal, estado anterior, estado nuevo, usuario que realizó el cambio y fecha/hora.
-- [x] `HistorialEstadoSucursal` es **INSERT-only**, igual que `MovimientosCaja`/`MovimientosInventario` — ningún registro se edita ni se elimina; el historial completo de una sucursal queda siempre disponible para auditoría.
-- [x] El registro en `HistorialEstadoSucursal` se crea dentro de la misma `transaction.atomic()` que el cambio de `activo` en `Sucursal` — si uno falla, el otro tampoco se guarda.
-
-### Nota para features futuras (CFDI / Facturación)
-
 *(Sin marcar a propósito — corresponde al código de `017 · Facturación`, que todavía no existe.)*
-
 - [ ] Cualquier documento fiscal (CFDI, feature `017 · Facturación`) debe almacenar los datos de la sucursal (nombre, ubicación) de forma **desnormalizada** al momento de su emisión, nunca como una referencia viva por FK — dado que, a partir de esta feature, `nombre_sucursal` deja de ser único de forma permanente en el sistema.
 
 ## Fuera de alcance

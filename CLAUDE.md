@@ -57,9 +57,9 @@ These are load-bearing conventions for FleboSil ERP; apply them to every new app
 - `frontend/src/api/` — one function per endpoint, grouped by module; components never call `axios` directly.
 - `frontend/src/hooks/` — one React Query hook per entity, centralizing cache/loading/error state.
 - `frontend/src/styles/variables.css` — global CSS variables (brand colors, status colors, typography, breakpoints). Every `*.module.css` consumes these via `var(--nombre)`; never hardcode a color.
-- Styling is one `Componente.module.css` per component, imported as `styles` and applied via `className={styles.x}` — no inline styles, no CSS mixed into JSX.
+- Styling is one `Componente.module.css` per component, imported as `styles` and applied via `className={styles.x}` — no inline styles, no CSS mixed into TSX.
 - Common reusable components (`Tabla`, `Modal`, `BotonPrimario`, under `frontend/src/components/common/`) were established in feature `006` specifically so later features don't re-solve table/modal patterns — check there before building a new one.
-- Naming: `snake_case` for Django models/fields, `camelCase` for JS/React variables and functions.
+- Naming: `snake_case` for Django models/fields, `camelCase` for TS/React variables and functions.
 - **Language: UI text, user-facing messages, and variable/function/model names are all in Spanish.** Technical comments are also written in Spanish.
 
 ## Hard limits (do not violate)

@@ -31,10 +31,10 @@ def sucursal(db):
 
 @pytest.mark.django_db
 def test_alertas_vacio_sin_stock_bajo(api_client, sucursal):
-    categoria = Categoria.objects.create(nombre_categoria='General')
+    categoria = Categoria.objects.create(nombre_categoria='General', tipo='ambos')
     producto = Producto.objects.create(
         nombre_producto='Suero fisiológico', sku='SKU-1', unidad_medida='pza',
-        categoria=categoria, precio_unitario='10.00',
+        categoria=categoria, precio_venta='10.00',
     )
     InventarioSucursalProducto.objects.create(
         sucursal=sucursal, producto=producto, stock_actual='50.00', stock_minimo='10.00',
@@ -48,12 +48,14 @@ def test_alertas_vacio_sin_stock_bajo(api_client, sucursal):
 
 @pytest.mark.django_db
 def test_alertas_incluye_producto_y_materia_prima_bajo_minimo(api_client, sucursal):
-    categoria = Categoria.objects.create(nombre_categoria='General')
+    categoria = Categoria.objects.create(nombre_categoria='General', tipo='ambos')
     producto = Producto.objects.create(
         nombre_producto='Suero fisiológico', sku='SKU-2', unidad_medida='pza',
-        categoria=categoria, precio_unitario='10.00',
+        categoria=categoria, precio_venta='10.00',
     )
-    materia_prima = MateriaPrima.objects.create(nombre_item='Cloruro de sodio', unidad_medida='kg')
+    materia_prima = MateriaPrima.objects.create(
+        nombre_item='Cloruro de sodio', unidad_medida='kg', categoria=categoria,
+    )
 
     InventarioSucursalProducto.objects.create(
         sucursal=sucursal, producto=producto, stock_actual='2.00', stock_minimo='10.00',

@@ -10,21 +10,21 @@ Orden y estado de las features. Es la vista de "qué hay hecho, qué toca ahora 
 4. **004 · Recuperar contraseña** — Permite acceder a la feature de *Cambiar contraseña*.
 5. **005 · Cambiar contraseña** — Permite cambiar la contraseña del usuario.
 6. **006 · Sucursales** — Vista de sucursales, con manejo según el rol del usuario, incluyendo reactivación, validación de nombre duplicado e `HistorialEstadoSucursal`. *(el bloqueo de `MovimientoInventario` para sucursales inactivas y la denormalización en CFDI quedan documentados como obligación de `009`/`010`/`011`/`012` y `017` respectivamente, features que aún no existen)*
+7. **007 · Catálogo** — Vista con CRUD de productos, materia prima y categorías, con selector de pestañas y filtrado de categoría por tipo. *(`MateriaPrima.proveedor_principal` queda documentado como obligación de `008 · Personas`, que la agregará mediante un `AddField` una vez exista `Proveedor` — no puede declararse antes, ver nota en `plan.md`)*
 
 ## Siguiente 🔜
 
-1. **007 · Catálogo** — Vista con CRUD de productos, materia prima y categorías (productos).
-2. **008 · Personas** — Vista con selección entre clientes, proveedores, empleados y usuarios.
-3. **009 · Inventario** — Vista con los inventarios de productos y materia prima.
-4. **010 · Compras** — Vista con lo relacionado a las compras.
-5. **011 · Ventas** — Vista con lo relacionado a las ventas.
-6. **012 · Producción** — Vista con lo relacionado a la producción y gestión de recetas.
-7. **013 · Caja** — Vista de movimientos de caja; para el rol admin.
-8. **014 · Dashboard** — Es la vista principal de la aplicación.
-9. **015 · Información de Usuario** — Permite cambiar la información de usuario con autorización del mismo.
-10. **016 · Configuración Fiscal** — Datos fiscales de la empresa. Conexión al PAC. Catálogo de series y folios de facturación. Para rol admin.
-11. **017 · Facturación** — Lista de facturas. Genera facturas.
-12. **018 · Contabilidad** — Catálogo de cuentas contables. Libro diario. Balance de comprobación.
+1. **008 · Personas** — Vista con selección entre clientes, proveedores, empleados y usuarios.
+2. **009 · Inventario** — Vista con los inventarios de productos y materia prima.
+3. **010 · Compras** — Vista con lo relacionado a las compras.
+4. **011 · Ventas** — Vista con lo relacionado a las ventas.
+5. **012 · Producción** — Vista con lo relacionado a la producción y gestión de recetas.
+6. **013 · Caja** — Vista de movimientos de caja; para el rol admin.
+7. **014 · Dashboard** — Es la vista principal de la aplicación.
+8. **015 · Información de Usuario** — Permite cambiar la información de usuario con autorización del mismo.
+9. **016 · Configuración Fiscal** — Datos fiscales de la empresa. Conexión al PAC. Catálogo de series y folios de facturación. Para rol admin.
+10. **017 · Facturación** — Lista de facturas. Genera facturas.
+11. **018 · Contabilidad** — Catálogo de cuentas contables. Libro diario. Balance de comprobación.
 
 ## Backlog / ideas 💡
 
