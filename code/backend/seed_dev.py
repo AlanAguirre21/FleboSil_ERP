@@ -15,7 +15,9 @@ sucursal, _ = Sucursal.objects.get_or_create(
     nombre_sucursal='Matriz', defaults={'ubicacion_sucursal': 'CDMX'}
 )
 
-categoria, _ = Categoria.objects.get_or_create(nombre_categoria='General')
+categoria, _ = Categoria.objects.get_or_create(
+    nombre_categoria='General', defaults={'tipo': 'ambos'}
+)
 
 producto, _ = Producto.objects.get_or_create(
     sku='SKU-DEV-1',
@@ -23,12 +25,12 @@ producto, _ = Producto.objects.get_or_create(
         'nombre_producto': 'Suero fisiológico 1L',
         'unidad_medida': 'pza',
         'categoria': categoria,
-        'precio_unitario': '45.00',
+        'precio_venta': '45.00',
     },
 )
 
 materia_prima, _ = MateriaPrima.objects.get_or_create(
-    nombre_item='Cloruro de sodio', defaults={'unidad_medida': 'kg'}
+    nombre_item='Cloruro de sodio', defaults={'unidad_medida': 'kg', 'categoria': categoria},
 )
 
 InventarioSucursalProducto.objects.update_or_create(
