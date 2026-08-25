@@ -28,7 +28,8 @@ const ETIQUETAS_TIPO_MOVIMIENTO: Record<TipoMovimientoInventario, string> = {
 const ETIQUETAS_MOTIVO: Record<MotivoMovimientoInventario, string> = {
   compra: 'Compra',
   venta: 'Venta',
-  produccion: 'Producción',
+  produccion_consumo: 'Consumo de producción',
+  produccion_entrada: 'Entrada de producción',
   ajuste: 'Ajuste',
 }
 

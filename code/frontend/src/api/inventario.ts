@@ -35,7 +35,7 @@ export async function getStock(tipo: TipoItemInventario, sucursalId: number): Pr
 // --- Movimientos de inventario -------------------------------------------
 
 export type TipoMovimientoInventario = 'entrada' | 'salida'
-export type MotivoMovimientoInventario = 'compra' | 'venta' | 'produccion' | 'ajuste'
+export type MotivoMovimientoInventario = 'compra' | 'venta' | 'produccion_consumo' | 'produccion_entrada' | 'ajuste'
 
 export interface MovimientoInventario {
   id: number
