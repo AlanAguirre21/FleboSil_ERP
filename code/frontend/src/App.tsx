@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext'
 import { CambiarContrasena } from './pages/CambiarContrasena/CambiarContrasena'
 import { Catalogo } from './pages/Catalogo/Catalogo'
 import { Dashboard } from './pages/Dashboard/Dashboard'
+import { Inventario } from './pages/Inventario/Inventario'
 import { Login } from './pages/Login/Login'
 import { Personas } from './pages/Personas/Personas'
 import { RecuperarContrasena } from './pages/RecuperarContrasena/RecuperarContrasena'
@@ -36,6 +37,7 @@ function App() {
               <Route path="/sucursales" element={<Sucursales />} />
               <Route path="/catalogo" element={<Catalogo />} />
               <Route path="/personas" element={<Personas />} />
+              <Route path="/inventario" element={<Inventario />} />
               <Route path="/informacion-usuario" element={<InformacionUsuarioPlaceholder />} />
             </Route>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
