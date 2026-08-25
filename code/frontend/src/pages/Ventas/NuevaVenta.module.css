@@ -34,7 +34,15 @@
 }
 
 .filaAgregarLinea {
-  @apply flex flex-wrap items-end gap-3;
+  @apply flex flex-wrap items-start gap-3;
+}
+
+.campoBoton {
+  @apply flex flex-col gap-1.5 text-[0.85rem] text-texto;
+}
+
+.etiquetaInvisible {
+  @apply invisible text-sm;
 }
 
 .disponible {

@@ -218,10 +218,12 @@ export function NuevaVenta() {
                 disabled={!sucursal}
               />
             </label>
-
-            <BotonPrimario type="button" variante="secundario" onClick={agregarLinea} disabled={!sucursal}>
-              Agregar línea
-            </BotonPrimario>
+            <div className={styles.campoBoton}>
+              <span className={styles.etiquetaInvisible}>{'\u00A0'}</span>
+              <BotonPrimario type="button" variante="secundario" onClick={agregarLinea} disabled={!sucursal}>
+                Agregar línea
+              </BotonPrimario>
+            </div>
           </div>
 
           {lineas.length > 0 && (
