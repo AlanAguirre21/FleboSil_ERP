@@ -12,8 +12,12 @@ import { Dashboard } from './pages/Dashboard/Dashboard'
 import { Inventario } from './pages/Inventario/Inventario'
 import { Login } from './pages/Login/Login'
 import { Personas } from './pages/Personas/Personas'
+import { Produccion } from './pages/Produccion/Produccion'
 import { RecuperarContrasena } from './pages/RecuperarContrasena/RecuperarContrasena'
 import { Sucursales } from './pages/Sucursales/Sucursales'
+import { DetalleVenta } from './pages/Ventas/DetalleVenta'
+import { NuevaVenta } from './pages/Ventas/NuevaVenta'
+import { Ventas } from './pages/Ventas/Ventas'
 
 const queryClient = new QueryClient()
 
@@ -44,6 +48,10 @@ function App() {
               <Route path="/compras" element={<Compras />} />
               <Route path="/compras/nueva" element={<NuevaCompra />} />
               <Route path="/compras/:id" element={<DetalleCompra />} />
+              <Route path="/ventas" element={<Ventas />} />
+              <Route path="/ventas/nueva" element={<NuevaVenta />} />
+              <Route path="/ventas/:id" element={<DetalleVenta />} />
+              <Route path="/produccion" element={<Produccion />} />
               <Route path="/informacion-usuario" element={<InformacionUsuarioPlaceholder />} />
             </Route>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
