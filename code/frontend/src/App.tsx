@@ -7,6 +7,7 @@ import { CambiarContrasena } from './pages/CambiarContrasena/CambiarContrasena'
 import { Catalogo } from './pages/Catalogo/Catalogo'
 import { Dashboard } from './pages/Dashboard/Dashboard'
 import { Login } from './pages/Login/Login'
+import { Personas } from './pages/Personas/Personas'
 import { RecuperarContrasena } from './pages/RecuperarContrasena/RecuperarContrasena'
 import { Sucursales } from './pages/Sucursales/Sucursales'
 
@@ -34,6 +35,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/sucursales" element={<Sucursales />} />
               <Route path="/catalogo" element={<Catalogo />} />
+              <Route path="/personas" element={<Personas />} />
               <Route path="/informacion-usuario" element={<InformacionUsuarioPlaceholder />} />
             </Route>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
