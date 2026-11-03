@@ -11,6 +11,9 @@ from .models import Compra, DetalleCompraMateriaPrima, DetalleCompraProducto
 
 CANTIDAD_MINIMA = Decimal('0.01')
 COSTO_MINIMO = Decimal(0)
+# Mayor valor que cabe en las columnas `DecimalField(max_digits=12,
+# decimal_places=2)` de subtotal y total.
+MONTO_MAXIMO = Decimal('9999999999.99')
 
 
 def calcular_subtotal(cantidad, costo_unitario):
@@ -24,7 +27,10 @@ def calcular_subtotal(cantidad, costo_unitario):
 
 
 class DetalleCompraProductoSerializer(serializers.ModelSerializer):
-    producto = serializers.PrimaryKeyRelatedField(queryset=Producto.objects.filter(activo=True))
+    producto = serializers.PrimaryKeyRelatedField(
+        queryset=Producto.objects.filter(activo=True),
+        error_messages={'does_not_exist': 'El producto no existe o está desactivado.'},
+    )
     cantidad = serializers.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(CANTIDAD_MINIMA)])
     costo_unitario = serializers.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(COSTO_MINIMO)])
 
@@ -35,7 +41,10 @@ class DetalleCompraProductoSerializer(serializers.ModelSerializer):
 
 
 class DetalleCompraMateriaPrimaSerializer(serializers.ModelSerializer):
-    materia_prima = serializers.PrimaryKeyRelatedField(queryset=MateriaPrima.objects.filter(activo=True))
+    materia_prima = serializers.PrimaryKeyRelatedField(
+        queryset=MateriaPrima.objects.filter(activo=True),
+        error_messages={'does_not_exist': 'La materia prima no existe o está desactivada.'},
+    )
     cantidad = serializers.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(CANTIDAD_MINIMA)])
     costo_unitario = serializers.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(COSTO_MINIMO)])
 
@@ -51,8 +60,14 @@ class CompraSerializer(serializers.ModelSerializer):
     explícita de `plan.md`, por eso no aparece como campo de escritura).
     """
 
-    proveedor = serializers.PrimaryKeyRelatedField(queryset=Proveedor.objects.filter(activo=True))
-    sucursal = serializers.PrimaryKeyRelatedField(queryset=Sucursal.objects.filter(activo=True))
+    proveedor = serializers.PrimaryKeyRelatedField(
+        queryset=Proveedor.objects.filter(activo=True),
+        error_messages={'does_not_exist': 'El proveedor no existe o está desactivado.'},
+    )
+    sucursal = serializers.PrimaryKeyRelatedField(
+        queryset=Sucursal.objects.filter(activo=True),
+        error_messages={'does_not_exist': 'La sucursal no existe o está desactivada.'},
+    )
     proveedor_nombre = serializers.CharField(source='proveedor.nombre_proveedor', read_only=True)
     sucursal_nombre = serializers.CharField(source='sucursal.nombre_sucursal', read_only=True)
     usuario_nombre = serializers.SerializerMethodField()
@@ -75,6 +90,18 @@ class CompraSerializer(serializers.ModelSerializer):
         detalles_materia_prima = attrs.get('detalles_materia_prima', [])
         if not detalles_producto and not detalles_materia_prima:
             raise serializers.ValidationError('Una compra debe tener al menos una línea de producto o materia prima.')
+
+        # Se valida antes de guardar nada: un total que no cabe en su columna
+        # respondería con error de base de datos en vez de un mensaje claro.
+        total = sum(
+            (calcular_subtotal(linea['cantidad'], linea['costo_unitario'])
+             for linea in [*detalles_producto, *detalles_materia_prima]),
+            Decimal(0),
+        )
+        if total > MONTO_MAXIMO:
+            raise serializers.ValidationError(
+                f'El total de la compra excede el máximo permitido ({MONTO_MAXIMO}). Revisa cantidades y costos.',
+            )
         return attrs
 
     def create(self, validated_data):

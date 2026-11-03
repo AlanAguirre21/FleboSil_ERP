@@ -153,10 +153,20 @@ class VentaViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(self.get_serializer(venta).data, status=201, headers=headers)
 
+    def _obtener_venta_bloqueada(self):
+        """`get_object()` aplica permisos y el filtro de operador; después se
+        vuelve a leer la venta con `select_for_update()` para que dos
+        peticiones simultáneas (ej. doble clic en "Entregar") no pasen ambas
+        la validación de estado y dupliquen los movimientos de caja o de
+        inventario: la segunda espera a que la primera confirme y ve ya el
+        estado nuevo.
+        """
+        return Venta.objects.select_for_update().get(pk=self.get_object().pk)
+
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def entregar(self, request, pk=None):
-        venta = self.get_object()
+        venta = self._obtener_venta_bloqueada()
 
         if venta.estado != Venta.ESTADO_PENDIENTE:
             return Response({'detail': 'Solo se puede entregar una venta pendiente.'}, status=400)
@@ -181,7 +191,7 @@ class VentaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def cancelar(self, request, pk=None):
-        venta = self.get_object()
+        venta = self._obtener_venta_bloqueada()
 
         if venta.estado == Venta.ESTADO_CANCELADA:
             return Response({'detail': 'La venta ya está cancelada.'}, status=400)

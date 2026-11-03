@@ -10,6 +10,9 @@ from apps.terceros.models import Cliente
 from .models import DetalleVenta, Venta
 
 CANTIDAD_MINIMA = Decimal(1)
+# Mayor valor que cabe en las columnas `DecimalField(max_digits=12,
+# decimal_places=2)` de cantidad, subtotal y total.
+MONTO_MAXIMO = Decimal('9999999999.99')
 
 
 def validar_cantidad_entera(valor):
@@ -40,7 +43,10 @@ class DetalleVentaSerializer(serializers.ModelSerializer):
     alcance de `spec.md`: "no incluye descuentos ni precios especiales").
     """
 
-    producto = serializers.PrimaryKeyRelatedField(queryset=Producto.objects.filter(activo=True))
+    producto = serializers.PrimaryKeyRelatedField(
+        queryset=Producto.objects.filter(activo=True),
+        error_messages={'does_not_exist': 'El producto no existe o está desactivado.'},
+    )
     cantidad = serializers.DecimalField(
         max_digits=12, decimal_places=2,
         validators=[MinValueValidator(CANTIDAD_MINIMA), validar_cantidad_entera],
@@ -62,8 +68,12 @@ class VentaSerializer(serializers.ModelSerializer):
 
     cliente = serializers.PrimaryKeyRelatedField(
         queryset=Cliente.objects.filter(activo=True), required=False, allow_null=True,
+        error_messages={'does_not_exist': 'El cliente no existe o está desactivado.'},
     )
-    sucursal = serializers.PrimaryKeyRelatedField(queryset=Sucursal.objects.filter(activo=True))
+    sucursal = serializers.PrimaryKeyRelatedField(
+        queryset=Sucursal.objects.filter(activo=True),
+        error_messages={'does_not_exist': 'La sucursal no existe o está desactivada.'},
+    )
     cliente_nombre = serializers.SerializerMethodField()
     sucursal_nombre = serializers.CharField(source='sucursal.nombre_sucursal', read_only=True)
     usuario_nombre = serializers.SerializerMethodField()
@@ -91,6 +101,18 @@ class VentaSerializer(serializers.ModelSerializer):
         if not detalles:
             raise serializers.ValidationError('Una venta debe tener al menos una línea de producto.')
         return detalles
+
+    def validate(self, attrs):
+        # Se valida antes de guardar nada: un total que no cabe en su columna
+        # respondería con error de base de datos en vez de un mensaje claro.
+        total = attrs.get('gasto_envio', Decimal(0))
+        for linea in attrs['detalles']:
+            total += calcular_subtotal(linea['cantidad'], linea['producto'].precio_venta)
+        if total > MONTO_MAXIMO:
+            raise serializers.ValidationError(
+                {'detalles': [f'El total de la venta excede el máximo permitido ({MONTO_MAXIMO}). Revisa las cantidades.']},
+            )
+        return attrs
 
     def create(self, validated_data):
         detalles_data = validated_data.pop('detalles')

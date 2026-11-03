@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.files.storage import FileSystemStorage
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils import timezone
 
 from core.permissions import ROL_ADMIN, ROL_OPERADOR
@@ -78,6 +79,21 @@ class Usuario(AbstractUser):
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
+
+    class Meta(AbstractUser.Meta):
+        # `unique=True` de `email` distingue mayúsculas: sin esta restricción
+        # `Juan@x.com` y `juan@x.com` podían ser dos cuentas distintas.
+        constraints = [
+            models.UniqueConstraint(Lower('email'), name='usuario_email_unico_sin_mayusculas'),
+        ]
+
+    def save(self, *args, **kwargs):
+        # El correo siempre se guarda en minúsculas, venga del API, del admin
+        # de Django o de `createsuperuser` — así el login lo encuentra igual
+        # sin importar cómo se escriba.
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
 
     def nombre_mostrado(self):
         return self.get_full_name() or self.username
