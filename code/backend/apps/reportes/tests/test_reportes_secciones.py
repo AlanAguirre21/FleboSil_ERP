@@ -1,4 +1,3 @@
-from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -104,7 +103,10 @@ def test_periodo_anio_es_aceptado(api_client):
 def test_periodo_anio_agrupa_por_mes(admin_client, sucursal, usuario):
     ahora = timezone.localtime()
     _crear_venta(sucursal, usuario, Decimal('100.00'), fecha=ahora)
-    _crear_venta(sucursal, usuario, Decimal('50.00'), fecha=ahora - timedelta(days=10))
+    # Día 1 del mes actual (no "hace 10 días", que en los primeros días del
+    # mes cae en el mes anterior y hacía fallar la prueba según la fecha).
+    inicio_mes = ahora.replace(day=1, hour=0, minute=1, second=0, microsecond=0)
+    _crear_venta(sucursal, usuario, Decimal('50.00'), fecha=inicio_mes)
 
     response = admin_client.get('/api/reportes/resumen/', {'periodo': 'año'})
 

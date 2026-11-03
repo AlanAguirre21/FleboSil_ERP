@@ -6,6 +6,7 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
@@ -95,6 +96,20 @@ class BorradoFotoAnteriorMixin:
         return instance
 
 
+def _error_cuenta_existente(existente, dato):
+    """Mensaje de duplicado para el CRUD de usuarios. Una cuenta "borrada"
+    solo está desactivada (`is_active=False`) y sigue ocupando su correo,
+    nombre de usuario y empleado — en ese caso se indica cómo recuperarla en
+    vez de solo decir que ya existe.
+    """
+    if existente.is_active:
+        return f'Ya existe un usuario con ese {dato}.'
+    return (
+        f'Ya existe un usuario desactivado con ese {dato} ({existente.email}). '
+        'Reactívalo desde la lista de usuarios (activa "Mostrar inactivos") en vez de crear uno nuevo.'
+    )
+
+
 class UsuarioSerializer(BorradoFotoAnteriorMixin, serializers.ModelSerializer):
     """CRUD administrativo de usuarios (feature 010 · Usuarios).
 
@@ -119,7 +134,52 @@ class UsuarioSerializer(BorradoFotoAnteriorMixin, serializers.ModelSerializer):
             'empleado', 'activo', 'password', 'foto_usuario',
         ]
         read_only_fields = ['id']
-        extra_kwargs = {'username': {'required': False}}
+        # La unicidad de correo, nombre de usuario y empleado se valida en
+        # `validate_*` (sin distinguir mayúsculas y con mensaje en español),
+        # no con el `UniqueValidator` automático del modelo.
+        extra_kwargs = {
+            'username': {'required': False, 'validators': [UnicodeUsernameValidator()]},
+            'email': {'validators': []},
+            'empleado': {'validators': []},
+        }
+
+    def _otras_cuentas(self):
+        cuentas = Usuario.objects.all()
+        if self.instance is not None:
+            cuentas = cuentas.exclude(pk=self.instance.pk)
+        return cuentas
+
+    def validate_email(self, value):
+        value = value.strip().lower()
+        existente = self._otras_cuentas().filter(email__iexact=value).first()
+        if existente:
+            raise serializers.ValidationError(_error_cuenta_existente(existente, 'correo electrónico'))
+        return value
+
+    def validate_username(self, value):
+        existente = self._otras_cuentas().filter(username__iexact=value).first()
+        if existente:
+            raise serializers.ValidationError(_error_cuenta_existente(existente, 'nombre de usuario'))
+        return value
+
+    def validate_empleado(self, value):
+        if value is None:
+            return value
+        existente = self._otras_cuentas().filter(empleado=value).first()
+        if existente:
+            raise serializers.ValidationError(_error_cuenta_existente(existente, 'empleado vinculado'))
+        return value
+
+    def validate(self, attrs):
+        # Al crear sin `username` se usa el correo (ver `create()`); ese valor
+        # también debe estar libre, o fallaría en la base de datos.
+        if self.instance is None and not attrs.get('username') and attrs.get('email'):
+            existente = self._otras_cuentas().filter(username__iexact=attrs['email']).first()
+            if existente:
+                raise serializers.ValidationError(
+                    {'username': [_error_cuenta_existente(existente, 'nombre de usuario')]},
+                )
+        return attrs
 
     def validate_password(self, value):
         try:
@@ -183,12 +243,12 @@ class UsuarioPropioSerializer(BorradoFotoAnteriorMixin, serializers.ModelSeriali
 
     username = serializers.CharField(
         validators=[UniqueValidator(
-            queryset=Usuario.objects.all(), message='Ya existe un usuario con ese nombre de usuario.',
+            queryset=Usuario.objects.all(), lookup='iexact', message='Ya existe un usuario con ese nombre de usuario.',
         )],
     )
     email = serializers.EmailField(
         validators=[UniqueValidator(
-            queryset=Usuario.objects.all(), message='Ya existe un usuario con ese correo electrónico.',
+            queryset=Usuario.objects.all(), lookup='iexact', message='Ya existe un usuario con ese correo electrónico.',
         )],
     )
     first_name = serializers.CharField(required=True, allow_blank=False)
@@ -206,6 +266,9 @@ class UsuarioPropioSerializer(BorradoFotoAnteriorMixin, serializers.ModelSeriali
         request = self.context.get('request')
         if not (request and request.user.rol_usuario == ROL_ADMIN):
             self.fields.pop('rol_usuario', None)
+
+    def validate_email(self, value):
+        return value.strip().lower()
 
     def validate_rol_usuario(self, value):
         # Solo importa el caso admin -> operador: es el único que puede
@@ -238,7 +301,7 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         request = self.context.get('request')
         ip = request.META.get('REMOTE_ADDR') if request else None
-        usuario = Usuario.objects.filter(email=attrs['email']).first()
+        usuario = Usuario.objects.filter(email__iexact=attrs['email']).first()
 
         if usuario is None:
             # Correo inexistente: se registra por trazabilidad (posible
@@ -304,7 +367,7 @@ class SolicitarRecuperacionSerializer(serializers.Serializer):
 
     def guardar(self):
         email = self.validated_data['email']
-        usuario = Usuario.objects.filter(email=email, is_active=True).first()
+        usuario = Usuario.objects.filter(email__iexact=email, is_active=True).first()
 
         if usuario is None:
             return
@@ -318,7 +381,7 @@ class SolicitarRecuperacionSerializer(serializers.Serializer):
             expira_en=timezone.now() + timedelta(minutes=VIGENCIA_CODIGO_MINUTOS),
         )
 
-        _mensaje_recuperacion(email, codigo).send()
+        _mensaje_recuperacion(usuario.email, codigo).send()
 
 
 class VerificarCodigoSerializer(serializers.Serializer):
@@ -328,7 +391,7 @@ class VerificarCodigoSerializer(serializers.Serializer):
     def validate(self, attrs):
         registro = (
             CodigoRecuperacion.objects.filter(
-                usuario__email=attrs['email'], codigo=attrs['codigo'], usado=False,
+                usuario__email__iexact=attrs['email'], codigo=attrs['codigo'], usado=False,
             )
             .order_by('-creado_en')
             .first()
@@ -365,7 +428,7 @@ class CambiarContrasenaSerializer(serializers.Serializer):
 
         registro = (
             CodigoRecuperacion.objects.filter(
-                usuario__email=attrs['email'], verificado=True, usado=False,
+                usuario__email__iexact=attrs['email'], verificado=True, usado=False,
             )
             .order_by('-creado_en')
             .first()

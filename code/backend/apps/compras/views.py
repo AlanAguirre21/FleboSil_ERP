@@ -164,10 +164,18 @@ class CompraViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(self.get_serializer(compra).data, status=201, headers=headers)
 
+    def _obtener_compra_bloqueada(self):
+        """Igual que en Ventas: se vuelve a leer la compra con
+        `select_for_update()` para que dos peticiones simultáneas no pasen
+        ambas la validación de estado y dupliquen la entrada de stock o el
+        reverso.
+        """
+        return Compra.objects.select_for_update().get(pk=self.get_object().pk)
+
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def recibir(self, request, pk=None):
-        compra = self.get_object()
+        compra = self._obtener_compra_bloqueada()
 
         if compra.estado != Compra.ESTADO_PENDIENTE:
             return Response({'detail': 'Solo se puede recibir una compra pendiente.'}, status=400)
@@ -187,7 +195,7 @@ class CompraViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def cancelar(self, request, pk=None):
-        compra = self.get_object()
+        compra = self._obtener_compra_bloqueada()
 
         if compra.estado == Compra.ESTADO_CANCELADA:
             return Response({'detail': 'La compra ya está cancelada.'}, status=400)

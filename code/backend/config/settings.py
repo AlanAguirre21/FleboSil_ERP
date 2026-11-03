@@ -14,6 +14,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,19 +26,36 @@ load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
+def _variable_obligatoria(nombre):
+    """Lee una variable de entorno sin fallback: sin ella la app no arranca,
+    en vez de usar en silencio una clave escrita en el repositorio."""
+    valor = os.environ.get(nombre)
+    if not valor:
+        raise ImproperlyConfigured(
+            f'Falta la variable de entorno {nombre} (defínela en .env o en el servidor). Ver .env.example.',
+        )
+    return valor
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-x@b^(7!!cu52#!+1l)m1@rf3hkc$*#8f-039x&d(tyhs$niav)')
+SECRET_KEY = _variable_obligatoria('SECRET_KEY')
 
 # Clave simétrica (Fernet) para cifrar `ConfiguracionPAC.api_key_cifrada`
-# (feature 016 · Configuración Fiscal). Mismo criterio que SECRET_KEY: valor
-# de desarrollo aquí como fallback, se espera que producción la sobreescriba
-# vía variable de entorno (`.env`, ya excluido del repositorio).
-FISCAL_ENCRYPTION_KEY = os.environ.get('FISCAL_ENCRYPTION_KEY', '8Sfb_pSwAbrOdD5b0P7O15cl7cSLCb1i4TR4y2A-n6c=')
+# (feature 016 · Configuración Fiscal). Igual que SECRET_KEY: obligatoria y
+# propia de cada entorno (`.env`, ya excluido del repositorio).
+FISCAL_ENCRYPTION_KEY = _variable_obligatoria('FISCAL_ENCRYPTION_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# Apagado por defecto: el entorno local lo enciende explícitamente en `.env`.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+# Lista separada por comas (ej. `api.flebosil.com`). Vacía en desarrollo:
+# con DEBUG=True Django ya acepta localhost/127.0.0.1.
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get('ALLOWED_HOSTS', '').split(',')
+    if host.strip()
+]
 
 
 # Application definition
@@ -126,6 +144,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # Toda respuesta de error en JSON `{"detail": ...}`, nunca HTML (ver core/excepciones.py).
+    'EXCEPTION_HANDLER': 'core.excepciones.manejador_excepciones',
     'DEFAULT_THROTTLE_RATES': {
         # Límite de intentos de login por IP, para mitigar fuerza bruta.
         'login': '5/min',
@@ -190,7 +210,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+# Español de México: los mensajes de validación de Django/DRF (campo
+# obligatorio, sin permiso, etc.) se devuelven en español, como el resto de la
+# API.
+LANGUAGE_CODE = 'es-mx'
 
 # 'America/Mexico_City', no 'UTC' (default sin tocar del scaffold original):
 # 014 · Dashboard calcula límites de "día/semana/mes" con
