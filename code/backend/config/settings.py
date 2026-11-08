@@ -49,7 +49,7 @@ FISCAL_ENCRYPTION_KEY = _variable_obligatoria('FISCAL_ENCRYPTION_KEY')
 # Apagado por defecto: el entorno local lo enciende explícitamente en `.env`.
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-# Lista separada por comas (ej. `api.flebosil.com`). Vacía en desarrollo:
+# Lista separada por comas (ej. `api.erp.flebosil.com`). Vacía en desarrollo:
 # con DEBUG=True Django ya acepta localhost/127.0.0.1.
 ALLOWED_HOSTS = [
     host.strip()
@@ -180,7 +180,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Orígenes de confianza para los formularios con CSRF (el admin de Django)
-# servidos por HTTPS, ej. `https://api.flebosil.com`. La API usa JWT y no
+# servidos por HTTPS, ej. `https://api.erp.flebosil.com`. La API usa JWT y no
 # depende de esto.
 CSRF_TRUSTED_ORIGINS = [
     origen.strip()
@@ -188,9 +188,9 @@ CSRF_TRUSTED_ORIGINS = [
     if origen.strip()
 ]
 
-# Proxies delante de Django (022). En Railway, 1 (su balanceador); 2 si además
-# el dominio pasa por el proxy de Cloudflare (nube naranja). Con 0 (local) se
-# usa la IP de la conexión. Lo usan el throttling de DRF y `core.red.ip_cliente`.
+# Proxies delante de Django (022). En Railway, 1 (su balanceador; el dominio
+# `api.erp.flebosil.com` va sin el proxy de Cloudflare). Con 0 (local) se usa
+# la IP de la conexión. Lo usan el throttling de DRF y `core.red.ip_cliente`.
 NUM_PROXIES = int(os.environ.get('NUM_PROXIES') or 0)
 REST_FRAMEWORK['NUM_PROXIES'] = NUM_PROXIES or None
 
@@ -241,7 +241,7 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-reply@flebosil-erp.net')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-reply@notificaciones.flebosil.com')
 
 
 # Password validation
