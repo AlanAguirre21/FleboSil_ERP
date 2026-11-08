@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Venta(models.Model):
@@ -29,7 +30,10 @@ class Venta(models.Model):
     # `db_index=True`: 014 · Dashboard filtra/agrega por rango de `fecha`
     # en cada carga (día/semana/mes) — sin índice, esa consulta escanea
     # toda la tabla conforme crece.
-    fecha = models.DateTimeField(auto_now_add=True, db_index=True)
+    # `default` en vez de `auto_now_add`: la carga inicial (022) escribe la
+    # fecha histórica del xlsx; desde la app siempre es el momento de creación
+    # (los serializers la tienen de solo lectura).
+    fecha = models.DateTimeField(default=timezone.now, db_index=True)
     fecha_entrega = models.DateField(null=True, blank=True)
     fecha_entrega_real = models.DateTimeField(null=True, blank=True)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)

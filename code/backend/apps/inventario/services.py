@@ -37,11 +37,12 @@ def bloquear_inventario_materia_prima(sucursal, materia_prima):
 
 
 def registrar_movimiento_inventario(*, sucursal, tipo_item, item_id, tipo_movimiento, cantidad, motivo,
-                                     referencia_id, stock_resultante, usuario):
+                                     referencia_id, stock_resultante, usuario, fecha=None):
+    # `fecha` solo la pasa la carga inicial de datos (022); desde la app se omite.
     return MovimientoInventario.objects.create(
         sucursal=sucursal, tipo_item=tipo_item, item_id=item_id, tipo_movimiento=tipo_movimiento,
         cantidad=cantidad, motivo=motivo, referencia_id=referencia_id, stock_resultante=stock_resultante,
-        usuario=usuario,
+        usuario=usuario, **({'fecha': fecha} if fecha else {}),
     )
 
 

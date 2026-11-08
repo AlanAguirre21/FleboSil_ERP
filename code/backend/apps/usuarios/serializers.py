@@ -13,7 +13,7 @@ from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import serializers
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -22,6 +22,7 @@ from core.modules import modulos_para_rol
 from core.permissions import ROL_ADMIN, ROL_OPERADOR
 
 from .models import CodigoRecuperacion, RegistroAcceso
+from .protegido import MENSAJE_ADMIN_PROTEGIDO, es_admin_protegido
 from .validators import MENSAJE_FORMATO_FOTO, validar_foto_usuario
 
 Usuario = get_user_model()
@@ -110,6 +111,17 @@ def _error_cuenta_existente(existente, dato):
     )
 
 
+def _validar_cambios_admin_protegido(instance, attrs):
+    """Correo y rol del administrador protegido son fijos (022): se rechaza
+    cualquier valor distinto al actual, venga de quien venga."""
+    if not es_admin_protegido(instance):
+        return
+    if 'email' in attrs and attrs['email'].strip().lower() != instance.email.lower():
+        raise PermissionDenied(MENSAJE_ADMIN_PROTEGIDO)
+    if 'rol_usuario' in attrs and attrs['rol_usuario'] != instance.rol_usuario:
+        raise PermissionDenied(MENSAJE_ADMIN_PROTEGIDO)
+
+
 class UsuarioSerializer(BorradoFotoAnteriorMixin, serializers.ModelSerializer):
     """CRUD administrativo de usuarios (feature 010 · Usuarios).
 
@@ -171,6 +183,7 @@ class UsuarioSerializer(BorradoFotoAnteriorMixin, serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        _validar_cambios_admin_protegido(self.instance, attrs)
         # Al crear sin `username` se usa el correo (ver `create()`); ese valor
         # también debe estar libre, o fallaría en la base de datos.
         if self.instance is None and not attrs.get('username') and attrs.get('email'):
@@ -269,6 +282,10 @@ class UsuarioPropioSerializer(BorradoFotoAnteriorMixin, serializers.ModelSeriali
 
     def validate_email(self, value):
         return value.strip().lower()
+
+    def validate(self, attrs):
+        _validar_cambios_admin_protegido(self.instance, attrs)
+        return attrs
 
     def validate_rol_usuario(self, value):
         # Solo importa el caso admin -> operador: es el único que puede
@@ -369,7 +386,9 @@ class SolicitarRecuperacionSerializer(serializers.Serializer):
         email = self.validated_data['email']
         usuario = Usuario.objects.filter(email__iexact=email, is_active=True).first()
 
-        if usuario is None:
+        # El administrador protegido no recupera contraseña: es fija (022).
+        # Misma respuesta que con un correo inexistente.
+        if usuario is None or es_admin_protegido(usuario):
             return
 
         CodigoRecuperacion.objects.filter(usuario=usuario, usado=False).update(usado=True)
@@ -440,6 +459,8 @@ class CambiarContrasenaSerializer(serializers.Serializer):
             )
 
         usuario = registro.usuario
+        if es_admin_protegido(usuario):
+            raise PermissionDenied(MENSAJE_ADMIN_PROTEGIDO)
 
         if usuario.check_password(attrs['password']):
             raise serializers.ValidationError(

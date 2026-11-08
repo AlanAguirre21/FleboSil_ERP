@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class CuentaContable(models.Model):
@@ -64,7 +65,10 @@ class AsientoContable(models.Model):
     # `db_index=True`: el libro diario y el balance de comprobación
     # filtran/agregan por rango de `fecha` en cada consulta — mismo
     # criterio que `Venta.fecha`/`Compra.fecha` en `014 · Dashboard`.
-    fecha = models.DateTimeField(auto_now_add=True, db_index=True)
+    # `default` en vez de `auto_now_add`: la carga inicial (022) escribe la
+    # fecha histórica del xlsx; desde la app siempre es el momento de creación
+    # (los serializers la tienen de solo lectura).
+    fecha = models.DateTimeField(default=timezone.now, db_index=True)
     concepto = models.CharField(max_length=255)
     tipo_origen = models.CharField(max_length=10, choices=TIPO_ORIGEN_CHOICES)
     referencia_id = models.PositiveIntegerField(null=True, blank=True)

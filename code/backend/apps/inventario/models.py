@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from apps.catalogo.models import MateriaPrima, Producto
 from apps.sucursales.models import Sucursal
@@ -95,7 +96,10 @@ class MovimientoInventario(models.Model):
     referencia_id = models.PositiveIntegerField(null=True, blank=True)
     stock_resultante = models.DecimalField(max_digits=12, decimal_places=2)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='movimientos_inventario')
-    fecha = models.DateTimeField(auto_now_add=True)
+    # `default` en vez de `auto_now_add`: la carga inicial (022) escribe la
+    # fecha histórica del xlsx; desde la app siempre es el momento de creación
+    # (los serializers la tienen de solo lectura).
+    fecha = models.DateTimeField(default=timezone.now)
 
     class Meta:
         verbose_name_plural = 'movimientos de inventario'

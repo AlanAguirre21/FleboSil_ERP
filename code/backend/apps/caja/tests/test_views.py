@@ -205,3 +205,16 @@ def test_endpoint_saldo_separa_saldo_actual_y_adicional_por_envio(admin_client, 
     assert response.data['saldo_total'] == '500.00'
     assert response.data['saldo_adicional'] == '50.00'
     assert response.data['saldo_actual'] == '450.00'
+
+
+# --- 022: la fecha histórica solo la escribe la carga inicial ----------------
+
+
+@pytest.mark.django_db
+def test_movimiento_manual_ignora_fecha_enviada(admin_client):
+    payload = _payload_manual()
+    payload['fecha'] = '2020-01-01T12:00:00Z'
+    response = admin_client.post('/api/caja/', payload, format='json')
+
+    assert response.status_code == 201
+    assert response.data['fecha'][:4] != '2020'
