@@ -63,10 +63,6 @@ function formatearFecha(fecha: string): string {
   return new Date(fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-type LimiteMovimientos = '5' | '10' | 'todos'
-
-const ETIQUETAS_LIMITE: Record<LimiteMovimientos, string> = { '5': '5', '10': '10', todos: 'Todos' }
-
 export function Caja() {
   const { data: usuario, isLoading: usuarioCargando } = useUsuarioActual()
 
@@ -92,7 +88,6 @@ function CajaContenido() {
   const [motivoFiltro, setMotivoFiltro] = useState<MotivoMovimientoCaja | ''>('')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
-  const [limite, setLimite] = useState<LimiteMovimientos>('10')
 
   const { data: movimientos, isLoading } = useMovimientosCaja({
     tipo_movimiento: tipoFiltro || undefined,
@@ -123,8 +118,7 @@ function CajaContenido() {
   }, [movimientos])
 
   const lista = movimientos ?? []
-  // La API ya los entrega del más reciente al más antiguo; el límite solo recorta en pantalla.
-  const visibles = limite === 'todos' ? lista : lista.slice(0, Number(limite))
+  // La API ya los entrega del más reciente al más antiguo; Tabla pagina en pantalla.
 
   const columnas: ColumnaTabla<MovimientoCajaApi>[] = [
     {
@@ -280,29 +274,14 @@ function CajaContenido() {
         )}
       </div>
 
-      <div className="sectionHeader">
-        <span className="pageHint">{movimientos ? `Mostrando ${visibles.length} de ${lista.length}` : ''}</span>
-        <div className="segmented" role="group" aria-label="Cantidad de movimientos a mostrar">
-          {(['5', '10', 'todos'] as LimiteMovimientos[]).map((valor) => (
-            <button
-              key={valor}
-              type="button"
-              className={limite === valor ? 'segmentedOption segmentedOptionActive' : 'segmentedOption'}
-              aria-pressed={limite === valor}
-              onClick={() => setLimite(valor)}
-            >
-              {ETIQUETAS_LIMITE[valor]}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {isLoading ? (
         <p>Cargando movimientos…</p>
       ) : (
         <Tabla
           columnas={columnas}
-          datos={visibles}
+          datos={lista}
+          placeholderBusqueda="Buscar por motivo, observación o monto"
           mensajeVacio={
             hayFiltros
               ? 'Ningún movimiento coincide con los filtros.'

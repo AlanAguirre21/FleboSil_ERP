@@ -353,15 +353,6 @@ export function PestanaNominas() {
             ))}
           </select>
         </label>
-        <label className="filterField">
-          Buscar
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Nombre del empleado"
-          />
-        </label>
         {hayFiltros && (
           <button type="button" className="actionLink filtersEnd" onClick={limpiarFiltros}>
             Limpiar filtros
@@ -380,10 +371,11 @@ export function PestanaNominas() {
         <p>Cargando nóminas…</p>
       ) : (
         <>
-          <span className="pageHint">{`Mostrando ${filtradas.length} de ${lista.length}`}</span>
           <Tabla
             columnas={columnas}
             datos={filtradas}
+            placeholderBusqueda="Buscar por nombre del empleado"
+            busquedaControlada={{ valor: busqueda, onCambiar: setBusqueda, total: lista.length }}
             mensajeVacio={mensajeVacio}
             renderAcciones={renderAcciones}
             renderExpandido={renderDetalle}

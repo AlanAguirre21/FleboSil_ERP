@@ -300,12 +300,12 @@ describe('Catalogo', () => {
     mockUsuarioActual('operador')
 
     render(<Catalogo />)
-    const buscar = screen.getByLabelText('Buscar')
+    const buscar = screen.getByLabelText('Buscar en la tabla')
 
     fireEvent.change(buscar, { target: { value: 'fisiologico' } })
     expect(screen.getByText('Suero fisiológico')).toBeInTheDocument()
     expect(screen.queryByText('Vendas')).not.toBeInTheDocument()
-    expect(screen.getByText('Mostrando 1 de 2')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 2 en total)')).toBeInTheDocument()
 
     fireEvent.change(buscar, { target: { value: 'sku-2' } })
     expect(screen.getByText('Vendas')).toBeInTheDocument()
@@ -328,7 +328,7 @@ describe('Catalogo', () => {
     expect(screen.getByText('Ningún producto coincide con los filtros.')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }))
-    expect(screen.getByText('Mostrando 2 de 2')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–2 de 2')).toBeInTheDocument()
     expect(screen.getByLabelText('Categoría')).toHaveValue('')
   })
 

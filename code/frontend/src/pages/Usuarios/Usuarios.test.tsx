@@ -165,20 +165,19 @@ describe('Usuarios', () => {
     fireEvent.click(screen.getByRole('button', { name: /ana/i }))
 
     expect(screen.getByText('Historial de accesos de ana')).toBeInTheDocument()
-    expect(useAccesosUsuarioMock).toHaveBeenCalledWith(1, '5')
+    // Se pide el historial completo; la tabla lo pagina en pantalla.
+    expect(useAccesosUsuarioMock).toHaveBeenCalledWith(1, 'todos')
   })
 
-  it('el panel de accesos ofrece los selectores 5/10/todos', () => {
-    mockearHooks({ accesos: registrosDePrueba(3) })
+  it('el panel de accesos pagina el historial completo de 10 en 10', () => {
+    mockearHooks({ accesos: registrosDePrueba(23) })
 
     renderUsuarios()
     fireEvent.click(screen.getByRole('button', { name: /ana/i }))
 
-    fireEvent.click(screen.getByRole('button', { name: '10' }))
-    expect(useAccesosUsuarioMock).toHaveBeenCalledWith(1, '10')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
-    expect(useAccesosUsuarioMock).toHaveBeenCalledWith(1, 'todos')
+    expect(screen.getByText('Mostrando 1–10 de 23')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Página 3' }))
+    expect(screen.getByText('Mostrando 21–23 de 23')).toBeInTheDocument()
   })
 
   it('un usuario sin accesos registrados muestra un mensaje vacío', () => {
@@ -220,10 +219,10 @@ describe('Usuarios', () => {
     renderUsuarios()
     fireEvent.click(screen.getByLabelText(/mostrar inactivos/i))
 
-    fireEvent.change(screen.getByLabelText('Buscar'), { target: { value: 'perez' } })
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: 'perez' } })
     expect(screen.getByText('luis')).toBeInTheDocument()
     expect(screen.queryByText('ana')).not.toBeInTheDocument()
-    expect(screen.getByText('Mostrando 1 de 2')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 2 en total)')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }))
     fireEvent.change(screen.getByLabelText('Rol'), { target: { value: 'admin' } })

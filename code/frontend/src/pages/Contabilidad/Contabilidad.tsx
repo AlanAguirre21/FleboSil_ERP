@@ -13,6 +13,7 @@ import {
 } from '../../api/contabilidad'
 import { BotonPrimario } from '../../components/common/BotonPrimario'
 import { Modal } from '../../components/common/Modal'
+import { BarraListado, PieListado } from '../../components/common/Paginacion'
 import { Tabla, type ColumnaTabla } from '../../components/common/Tabla'
 import { useBalanceComprobacion } from '../../hooks/useBalanceComprobacion'
 import {
@@ -24,6 +25,7 @@ import {
 } from '../../hooks/useCuentasContables'
 import { useExportarContabilidad, useLibroDiario } from '../../hooks/useLibroDiario'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
+import { MENSAJE_SIN_COINCIDENCIAS, usePaginacion } from '../../hooks/usePaginacion'
 import { formatearImporte } from '../../utils/numeros'
 import styles from './Contabilidad.module.css'
 
@@ -66,9 +68,7 @@ function EtiquetaCuadre({ cargos, abonos }: { cargos: number; abonos: number }) 
   )
 }
 
-type LimiteLista = '5' | '10' | 'todos'
 
-const ETIQUETAS_LIMITE: Record<LimiteLista, string> = { '5': '5', '10': '10', todos: 'Todos' }
 
 type Pestaña = 'cuentas' | 'libro' | 'balance'
 
@@ -437,7 +437,6 @@ function LibroDiarioSeccion() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [expandidos, setExpandidos] = useState<Set<number>>(new Set())
-  const [limite, setLimite] = useState<LimiteLista>('10')
 
   const filtros = {
     tipo_origen: origenFiltro || undefined,
@@ -466,7 +465,7 @@ function LibroDiarioSeccion() {
     })
   }
 
-  // El CSV exporta todo lo filtrado; el límite solo recorta lo que se ve.
+  // El CSV exporta todo lo filtrado; la paginación solo recorta lo que se ve.
   async function alExportar() {
     const blob = await exportar.mutateAsync({ tipo: 'libro_diario', filtros })
     descargarBlob(blob, 'libro-diario.csv')
@@ -474,7 +473,15 @@ function LibroDiarioSeccion() {
 
   const lista = asientos ?? []
   // La API ya los entrega del más reciente al más antiguo.
-  const visibles = limite === 'todos' ? lista : lista.slice(0, Number(limite))
+  const paginacion = usePaginacion(lista, (asiento) =>
+    [
+      `#${asiento.id}`,
+      asiento.concepto,
+      ETIQUETAS_ORIGEN_ASIENTO[asiento.tipo_origen],
+      new Date(asiento.fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }),
+      ...asiento.movimientos.flatMap((m) => [m.cuenta_codigo, m.cuenta_nombre, m.monto]),
+    ].join(' '),
+  )
 
   return (
     <section className="tabPanel">
@@ -537,25 +544,11 @@ function LibroDiarioSeccion() {
         </p>
       ) : (
         <>
-          <div className="sectionHeader">
-            <span className="pageHint">{`Mostrando ${visibles.length} de ${lista.length}`}</span>
-            <div className="segmented" role="group" aria-label="Cantidad de pólizas a mostrar">
-              {(['5', '10', 'todos'] as LimiteLista[]).map((valor) => (
-                <button
-                  key={valor}
-                  type="button"
-                  className={limite === valor ? 'segmentedOption segmentedOptionActive' : 'segmentedOption'}
-                  aria-pressed={limite === valor}
-                  onClick={() => setLimite(valor)}
-                >
-                  {ETIQUETAS_LIMITE[valor]}
-                </button>
-              ))}
-            </div>
-          </div>
+          <BarraListado estado={paginacion} placeholderBusqueda="Buscar por póliza, concepto o cuenta" />
 
           <div className={styles.entryList}>
-            {visibles.map((asiento: AsientoContable) => {
+            {paginacion.visibles.length === 0 && <p className="emptyState">{MENSAJE_SIN_COINCIDENCIAS}</p>}
+            {paginacion.visibles.map((asiento: AsientoContable) => {
               const desplegado = expandidos.has(asiento.id)
               const { cargos, abonos } = sumasAsiento(asiento)
 
@@ -621,6 +614,8 @@ function LibroDiarioSeccion() {
               )
             })}
           </div>
+
+          <PieListado estado={paginacion} />
         </>
       )}
     </section>

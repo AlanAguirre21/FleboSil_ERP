@@ -10,6 +10,7 @@ import type {
 } from '../../api/rrhh'
 import { BotonPrimario } from '../../components/common/BotonPrimario'
 import { Modal } from '../../components/common/Modal'
+import { BarraListado, PieListado } from '../../components/common/Paginacion'
 import { Tabla, type ColumnaTabla } from '../../components/common/Tabla'
 import {
   useContactosEmergencia,
@@ -41,6 +42,7 @@ import {
   useTodasLasPosiciones,
 } from '../../hooks/usePosiciones'
 import { useCrearSolicitudNomina } from '../../hooks/useSolicitudesNomina'
+import { MENSAJE_SIN_COINCIDENCIAS, usePaginacion } from '../../hooks/usePaginacion'
 import { normalizarBusqueda, obtenerIniciales } from '../../utils/texto'
 import { PestanaNominas } from './PestanaNominas'
 import styles from './RRHH.module.css'
@@ -110,8 +112,6 @@ function ordenarPorJerarquia(posiciones: Posicion[]): { posicion: Posicion; prof
 
   return resultado
 }
-
-type LimiteLista = '5' | '10' | 'todos'
 
 type PestañaRRHH = 'organizacion' | 'directorio' | 'nominas'
 
@@ -430,15 +430,6 @@ function PestañaDirectorio({
   return (
     <div className="tabPanel">
       <div className="filters">
-        <label className="filterField">
-          Buscar
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Nombre o RFC"
-          />
-        </label>
 
         <label className="filterField">
           Departamento
@@ -472,10 +463,11 @@ function PestañaDirectorio({
         <p>Cargando directorio…</p>
       ) : (
         <>
-          <span className="pageHint">{`Mostrando ${filtradas.length} de ${filas.length}`}</span>
           <Tabla
             columnas={columnas}
             datos={filtradas}
+            placeholderBusqueda="Buscar por nombre o RFC"
+            busquedaControlada={{ valor: busqueda, onCambiar: setBusqueda, total: filas.length }}
             mensajeVacio={
               hayFiltros ? 'Ningún empleado coincide con los filtros.' : 'Todavía no hay empleados registrados.'
             }
@@ -597,6 +589,7 @@ function PanelDepartamento({
   const [posicionAConfirmar, setPosicionAConfirmar] = useState<Posicion | null>(null)
 
   const jerarquia = ordenarPorJerarquia(posiciones ?? [])
+  const paginacion = usePaginacion(jerarquia, ({ posicion }) => posicion.titulo_posicion)
 
   async function confirmarCambioPosicion() {
     if (!posicionAConfirmar) return
@@ -620,6 +613,8 @@ function PanelDepartamento({
       ) : jerarquia.length === 0 ? (
         <p className="emptyState">Este departamento todavía no tiene posiciones.</p>
       ) : (
+        <div className="tableStack">
+        <BarraListado estado={paginacion} placeholderBusqueda="Buscar posición" />
         <div className="tableScroll">
           <table className="dataTable">
             <thead>
@@ -632,7 +627,7 @@ function PanelDepartamento({
               </tr>
             </thead>
             <tbody>
-              {jerarquia.map(({ posicion, profundidad }) => {
+              {paginacion.visibles.map(({ posicion, profundidad }) => {
                 const esRaiz = profundidad === 0
                 const expandida = posicionExpandidaId === posicion.id
                 return (
@@ -698,6 +693,9 @@ function PanelDepartamento({
               })}
             </tbody>
           </table>
+          {paginacion.visibles.length === 0 && <p className="emptyState tableEmptyMessage">{MENSAJE_SIN_COINCIDENCIAS}</p>}
+        </div>
+        <PieListado estado={paginacion} />
         </div>
       )}
 
@@ -882,9 +880,50 @@ function AvatarEmpleado({ empleado, tamano }: { empleado: Empleado; tamano: 'chi
   )
 }
 
+function ListaEmpleadosPosicion({
+  asignaciones,
+  empleadoDe,
+  onSeleccionar,
+}: {
+  asignaciones: EmpleadoPosicion[]
+  empleadoDe: (id: number) => Empleado | undefined
+  onSeleccionar: (id: number) => void
+}) {
+  const paginacion = usePaginacion(asignaciones, (asignacion) => empleadoDe(asignacion.empleado)?.nombre_completo ?? '')
+
+  return (
+    <div className="tableStack">
+      <BarraListado estado={paginacion} placeholderBusqueda="Buscar empleado" />
+      {paginacion.visibles.length === 0 && <p className="emptyState">{MENSAJE_SIN_COINCIDENCIAS}</p>}
+      <ul className={styles.employeeList}>
+        {paginacion.visibles.map((asignacion) => {
+          const empleado = empleadoDe(asignacion.empleado)
+          return (
+            <li key={asignacion.id}>
+              <button
+                type="button"
+                className={styles.employeeItem}
+                onClick={() => empleado && onSeleccionar(empleado.id)}
+              >
+                {empleado && <AvatarEmpleado empleado={empleado} tamano="chico" />}
+                <span className={styles.employeeItemText}>
+                  <span className={styles.employeeItemName}>
+                    {empleado?.nombre_completo ?? `Empleado #${asignacion.empleado}`}
+                  </span>
+                  <span className={styles.employeeItemMeta}>Desde {formatearFecha(asignacion.fecha_inicio)}</span>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <PieListado estado={paginacion} />
+    </div>
+  )
+}
+
 function PanelEmpleadosPorPosicion({ posicion, empleados }: { posicion: Posicion; empleados: Empleado[] }) {
   const { data: asignaciones, isLoading } = useEmpleadoPosicionesVigentes(posicion.id)
-  const [limite, setLimite] = useState<LimiteLista>('5')
   const [formularioContratarAbierto, setFormularioContratarAbierto] = useState(false)
   // Se guarda solo el id, no el objeto — así el modal siempre refleja los
   // datos más recientes de `empleados` (por ejemplo, tras editar el nombre)
@@ -892,8 +931,6 @@ function PanelEmpleadosPorPosicion({ posicion, empleados }: { posicion: Posicion
   const [empleadoSeleccionadoId, setEmpleadoSeleccionadoId] = useState<number | null>(null)
 
   const lista = asignaciones ?? []
-  const cantidad = limite === 'todos' ? lista.length : Number(limite)
-  const listaRecortada = lista.slice(0, cantidad)
 
   function empleadoDe(id: number): Empleado | undefined {
     return empleados.find((e) => e.id === id)
@@ -904,48 +941,20 @@ function PanelEmpleadosPorPosicion({ posicion, empleados }: { posicion: Posicion
   return (
     <div className={styles.employeePanel}>
       <div className="sectionHeader">
-        <div className="segmented" role="group" aria-label="Cantidad de empleados a mostrar">
-          {(['5', '10', 'todos'] as LimiteLista[]).map((valor) => (
-            <button
-              key={valor}
-              type="button"
-              className={limite === valor ? 'segmentedOption segmentedOptionActive' : 'segmentedOption'}
-              onClick={() => setLimite(valor)}
-            >
-              {valor === 'todos' ? 'Todos' : valor}
-            </button>
-          ))}
-        </div>
+        <span />
         <BotonPrimario onClick={() => setFormularioContratarAbierto(true)}>Nuevo empleado</BotonPrimario>
       </div>
 
       {isLoading ? (
         <p>Cargando empleados…</p>
-      ) : listaRecortada.length === 0 ? (
+      ) : lista.length === 0 ? (
         <p className="emptyState">Nadie desempeña esta posición actualmente.</p>
       ) : (
-        <ul className={styles.employeeList}>
-          {listaRecortada.map((asignacion) => {
-            const empleado = empleadoDe(asignacion.empleado)
-            return (
-              <li key={asignacion.id}>
-                <button
-                  type="button"
-                  className={styles.employeeItem}
-                  onClick={() => empleado && setEmpleadoSeleccionadoId(empleado.id)}
-                >
-                  {empleado && <AvatarEmpleado empleado={empleado} tamano="chico" />}
-                  <span className={styles.employeeItemText}>
-                    <span className={styles.employeeItemName}>
-                      {empleado?.nombre_completo ?? `Empleado #${asignacion.empleado}`}
-                    </span>
-                    <span className={styles.employeeItemMeta}>Desde {formatearFecha(asignacion.fecha_inicio)}</span>
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+        <ListaEmpleadosPosicion
+          asignaciones={lista}
+          empleadoDe={empleadoDe}
+          onSeleccionar={setEmpleadoSeleccionadoId}
+        />
       )}
 
       <FormularioContratar

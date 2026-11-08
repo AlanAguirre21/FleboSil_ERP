@@ -179,7 +179,7 @@ describe('Caja', () => {
     expect(within(filaCompra).getByText('Retiro')).toHaveClass('statusNeutral')
   })
 
-  it('limita la tabla a 10 movimientos por defecto, con selector 5 / 10 / Todos', () => {
+  it('pagina la tabla de 10 en 10, con selector 10 / 25 / 50 / 100 / Todas', () => {
     mockearHooks()
     const muchos = Array.from({ length: 12 }, (_, i) => ({ ...(MOVIMIENTOS[0] as MovimientoCajaApi), id: 100 + i }))
     vi.mocked(useMovimientosCaja).mockReturnValue(
@@ -191,13 +191,28 @@ describe('Caja', () => {
 
     const filas = () => within(screen.getByRole('table')).getAllByRole('row').length - 1
     expect(filas()).toBe(10)
-    expect(screen.getByText('Mostrando 10 de 12')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–10 de 12')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '5' }))
-    expect(filas()).toBe(5)
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+    expect(filas()).toBe(2)
+    expect(screen.getByText('Mostrando 11–12 de 12')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
+    fireEvent.change(screen.getByLabelText('Filas por página'), { target: { value: 'todas' } })
     expect(filas()).toBe(12)
+    expect(screen.queryByRole('navigation', { name: 'Paginación' })).not.toBeInTheDocument()
+  })
+
+  it('el buscador de la tabla filtra los movimientos', () => {
+    mockearHooks()
+    mockUsuarioActual('admin')
+
+    renderCaja()
+
+    const total = within(screen.getByRole('table')).getAllByRole('row').length - 1
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: 'zzz-no-existe' } })
+    expect(screen.getByText('Ninguna fila coincide con la búsqueda.')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: '' } })
+    expect(within(screen.getByRole('table')).getAllByRole('row').length - 1).toBe(total)
   })
 
   it('"Limpiar filtros" aparece con un filtro aplicado y lo restablece', () => {

@@ -157,8 +157,17 @@ export async function getAccesosUsuario(id: number, limite: LimiteAccesos): Prom
   // `limite=todos` pagina en el backend (ver plan.md): la respuesta trae
   // `{count, next, previous, results}` en vez del arreglo plano que
   // devuelven `limite=5`/`10` — se normaliza acá para que el hook/página no
-  // tengan que distinguir entre ambas formas.
-  return Array.isArray(data) ? data : data.results
+  // tengan que distinguir entre ambas formas. Se siguen todas las páginas
+  // (`next`) para que la tabla pagine el historial completo en pantalla.
+  if (Array.isArray(data)) return data
+  const registros: RegistroAcceso[] = [...data.results]
+  let siguiente: string | null = data.next
+  while (siguiente) {
+    const { data: pagina } = await apiClient.get(siguiente)
+    registros.push(...pagina.results)
+    siguiente = pagina.next
+  }
+  return registros
 }
 
 // --- Cierre de sesión (feature 010 · Usuarios) -------------------------------

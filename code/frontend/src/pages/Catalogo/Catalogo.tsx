@@ -113,6 +113,7 @@ function useFiltrosCatalogo<T extends { activo: boolean }>(
     extra,
     setExtra,
     filtrados,
+    total: lista.length,
     hayFiltros: Boolean(busqueda.trim() || estado !== 'todos' || extra),
     limpiar: () => {
       setBusqueda('')
@@ -122,30 +123,18 @@ function useFiltrosCatalogo<T extends { activo: boolean }>(
   }
 }
 
+// El buscador de texto vive en la tabla (junto a "Mostrar"); aquí quedan los
+// filtros por categoría/tipo y estado.
 function BarraFiltros({
   filtros,
-  placeholder,
   extra,
-  total,
 }: {
   filtros: ReturnType<typeof useFiltrosCatalogo<{ activo: boolean }>>
-  placeholder: string
   extra: { etiqueta: string; opciones: { valor: string; etiqueta: string }[] }
-  total: number
 }) {
   return (
     <>
       <div className="filters">
-        <label className="filterField">
-          Buscar
-          <input
-            type="search"
-            value={filtros.busqueda}
-            onChange={(e) => filtros.setBusqueda(e.target.value)}
-            placeholder={placeholder}
-          />
-        </label>
-
         <label className="filterField">
           {extra.etiqueta}
           <select value={filtros.extra} onChange={(e) => filtros.setExtra(e.target.value)}>
@@ -173,8 +162,6 @@ function BarraFiltros({
           </button>
         )}
       </div>
-
-      <span className="pageHint">{`Mostrando ${filtros.filtrados.length} de ${total}`}</span>
     </>
   )
 }
@@ -383,9 +370,7 @@ function PestañaProductos({ esAdmin, solicitudNuevo }: { esAdmin: boolean; soli
     <div className="tabPanel">
       <BarraFiltros
         filtros={filtros}
-        placeholder="Nombre o SKU"
         extra={{ etiqueta: 'Categoría', opciones: opcionesCategoria(categorias ?? [], ['producto', 'ambos']) }}
-        total={(productos ?? []).length}
       />
 
       {isLoading ? (
@@ -394,6 +379,8 @@ function PestañaProductos({ esAdmin, solicitudNuevo }: { esAdmin: boolean; soli
         <Tabla
           columnas={columnas}
           datos={filtros.filtrados}
+          placeholderBusqueda="Buscar por nombre o SKU"
+          busquedaControlada={{ valor: filtros.busqueda, onCambiar: filtros.setBusqueda, total: filtros.total }}
           mensajeVacio={
             filtros.hayFiltros ? 'Ningún producto coincide con los filtros.' : 'Todavía no hay productos registrados.'
           }
@@ -691,9 +678,7 @@ function PestañaMateriaPrima({ esAdmin, solicitudNuevo }: { esAdmin: boolean; s
     <div className="tabPanel">
       <BarraFiltros
         filtros={filtros}
-        placeholder="Nombre"
         extra={{ etiqueta: 'Categoría', opciones: opcionesCategoria(categorias ?? [], ['materia_prima', 'ambos']) }}
-        total={(items ?? []).length}
       />
 
       {isLoading ? (
@@ -702,6 +687,8 @@ function PestañaMateriaPrima({ esAdmin, solicitudNuevo }: { esAdmin: boolean; s
         <Tabla
           columnas={columnas}
           datos={filtros.filtrados}
+          placeholderBusqueda="Buscar por nombre"
+          busquedaControlada={{ valor: filtros.busqueda, onCambiar: filtros.setBusqueda, total: filtros.total }}
           mensajeVacio={
             filtros.hayFiltros
               ? 'Ninguna materia prima coincide con los filtros.'
@@ -982,9 +969,7 @@ function PestañaCategorias({ esAdmin, solicitudNuevo }: { esAdmin: boolean; sol
     <div className="tabPanel">
       <BarraFiltros
         filtros={filtros}
-        placeholder="Nombre"
         extra={{ etiqueta: 'Tipo', opciones: OPCIONES_TIPO }}
-        total={(categorias ?? []).length}
       />
 
       {isLoading ? (
@@ -993,6 +978,8 @@ function PestañaCategorias({ esAdmin, solicitudNuevo }: { esAdmin: boolean; sol
         <Tabla
           columnas={columnas}
           datos={filtros.filtrados}
+          placeholderBusqueda="Buscar por nombre"
+          busquedaControlada={{ valor: filtros.busqueda, onCambiar: filtros.setBusqueda, total: filtros.total }}
           mensajeVacio={
             filtros.hayFiltros
               ? 'Ninguna categoría coincide con los filtros.'
