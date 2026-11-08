@@ -1,6 +1,7 @@
 import logging
 
 from django.db import DataError
+from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
@@ -31,3 +32,18 @@ def manejador_excepciones(exc, context):
 
     logger.error('Error no manejado en %s', context['request'].path, exc_info=exc)
     return Response({'detail': MENSAJE_ERROR_INTERNO}, status=500)
+
+
+MENSAJE_NO_ENCONTRADO = 'No se encontró el recurso solicitado.'
+
+
+def no_encontrado(request, exception=None):
+    """`handler404` (022): una URL inexistente de la API responde JSON
+    `{"detail": ...}`, no la página HTML de Django (con `DEBUG=False`)."""
+    return JsonResponse({'detail': MENSAJE_NO_ENCONTRADO}, status=404)
+
+
+def error_servidor(request):
+    """`handler500` (022): errores fuera de las vistas de DRF (middleware,
+    vistas de Django) también en JSON y sin detalles internos."""
+    return JsonResponse({'detail': MENSAJE_ERROR_INTERNO}, status=500)

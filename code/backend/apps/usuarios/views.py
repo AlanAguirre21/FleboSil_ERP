@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
 from core.permissions import ROL_ADMIN, EsAdmin
+from core.red import ip_cliente
 
 from .models import Usuario
 from .protegido import MENSAJE_ADMIN_PROTEGIDO, es_admin_protegido
@@ -81,7 +82,7 @@ class LogoutView(GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.cerrar_sesion(request.user, request.META.get('REMOTE_ADDR'))
+        serializer.cerrar_sesion(request.user, ip_cliente(request))
         return Response(status=204)
 
 

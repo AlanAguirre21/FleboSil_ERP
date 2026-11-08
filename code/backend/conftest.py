@@ -2,11 +2,20 @@ from importlib import import_module
 
 import pytest
 from django.apps import apps as django_apps
+from django.core.management import call_command
 
 SIEMBRAS_CATALOGO_DE_CUENTAS = [
     ('0002_cuentas_base', 'cargar_catalogo_base'),
     ('0003_cuenta_sueldos', 'crear_cuenta_sueldos'),
 ]
+
+
+@pytest.fixture(scope='session')
+def django_db_setup(django_db_setup, django_db_blocker):
+    """Crea la tabla de la caché en la base de pruebas: la caché vive en la
+    base (`DatabaseCache`, 022) y las migraciones no la crean."""
+    with django_db_blocker.unblock():
+        call_command('createcachetable', verbosity=0)
 
 
 @pytest.fixture

@@ -1,0 +1,12 @@
+# Imagen de respaldos (023): solo el código, nunca secretos ni archivos subidos.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+staticfiles/
+media/
+media_rrhh/
+media_usuarios/
+db.sqlite3

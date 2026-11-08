@@ -56,6 +56,9 @@ ALLOWED_HOSTS = [
     for host in os.environ.get('ALLOWED_HOSTS', '').split(',')
     if host.strip()
 ]
+# Railway revisa `/salud/` con este Host en cada despliegue (022).
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    ALLOWED_HOSTS.append('healthcheck.railway.app')
 
 
 # Application definition
@@ -86,11 +89,15 @@ INSTALLED_APPS = [
     'apps.configuracion_fiscal',
     'apps.facturacion',
     'apps.contabilidad',
+    'apps.respaldos',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    # Sirve los estáticos del admin de Django (022): en producción no hay
+    # Nginx delante. Debe ir justo después de SecurityMiddleware.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -172,19 +179,63 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
+# Orígenes de confianza para los formularios con CSRF (el admin de Django)
+# servidos por HTTPS, ej. `https://api.flebosil.com`. La API usa JWT y no
+# depende de esto.
+CSRF_TRUSTED_ORIGINS = [
+    origen.strip()
+    for origen in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origen.strip()
+]
 
-# Correo saliente (feature 004 · Recuperar contraseña)
-# El backend a usar depende de si hay credenciales SMTP configuradas
-# (EMAIL_HOST en .env), no de DEBUG — así se puede probar el envío real
-# también en desarrollo sin forzar DEBUG=False (que activa otro
-# comportamiento no relacionado, como páginas de error genéricas). Sin
-# EMAIL_HOST configurado, los correos se imprimen en la consola del
-# runserver en vez de enviarse de verdad, para no requerir credenciales SMTP
-# reales solo para levantar el entorno local.
-EMAIL_BACKEND = os.environ.get(
-    'EMAIL_BACKEND',
-    'django.core.mail.backends.smtp.EmailBackend' if os.environ.get('EMAIL_HOST') else 'django.core.mail.backends.console.EmailBackend',
-)
+# Proxies delante de Django (022). En Railway, 1 (su balanceador); 2 si además
+# el dominio pasa por el proxy de Cloudflare (nube naranja). Con 0 (local) se
+# usa la IP de la conexión. Lo usan el throttling de DRF y `core.red.ip_cliente`.
+NUM_PROXIES = int(os.environ.get('NUM_PROXIES') or 0)
+REST_FRAMEWORK['NUM_PROXIES'] = NUM_PROXIES or None
+
+# Caché en la base de datos (022): los límites de intentos (login,
+# recuperación) se cuentan en caché, y con varios workers de Gunicorn una
+# caché en memoria daría a cada proceso su propio contador. La tabla se crea
+# con `manage.py createcachetable` (en cada despliegue y en `conftest.py`).
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_flebosil',
+    },
+}
+
+# HTTPS en producción (022). Railway termina TLS en su proxy y avisa con
+# `X-Forwarded-Proto`; sin esta cabecera Django creería que la petición es
+# HTTP. En local (`DEBUG=True`) no se activa nada de esto.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True') != 'False'
+    # Railway revisa la salud del servicio por HTTP interno, sin cabecera.
+    SECURE_REDIRECT_EXEMPT = [r'^salud/$']
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Corto al inicio; subirlo (ej. 31536000) cuando el dominio esté estable.
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS') or 3600)
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# Correo saliente (feature 004 · Recuperar contraseña; 022 · Resend).
+# Sin `EMAIL_BACKEND` explícito, el backend se elige por lo que esté
+# configurado: con `RESEND_API_KEY`, la API de Resend (producción, ver
+# `core/correo_resend.py`); con `EMAIL_HOST`, SMTP; sin nada, los correos se
+# imprimen en la consola del runserver, para levantar el entorno local sin
+# credenciales reales. No depende de DEBUG. Un `EMAIL_BACKEND=` vacío en
+# `.env` cuenta como no definido.
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+if os.environ.get('EMAIL_BACKEND'):
+    EMAIL_BACKEND = os.environ['EMAIL_BACKEND']
+elif RESEND_API_KEY:
+    EMAIL_BACKEND = 'core.correo_resend.BackendResend'
+elif os.environ.get('EMAIL_HOST'):
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
@@ -238,6 +289,27 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+# Destino de `collectstatic` (estilos del admin de Django), servido por WhiteNoise.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        # Comprimidos y con caché larga; sin manifiesto, para que una plantilla
+        # no falle si `collectstatic` no corrió (pruebas, local).
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
+
+
+def _ruta(variable, por_defecto):
+    """Carpeta de archivos subidos, configurable por variable de entorno: en
+    Railway apunta al Volume (`/data/...`), que sobrevive a cada despliegue;
+    en local, las carpetas de siempre dentro del proyecto."""
+    valor = os.environ.get(variable)
+    return Path(valor) if valor else por_defecto
 
 
 # Archivos generados por 017 · Facturación (XML/PDF de cada CFDI timbrado).
@@ -245,21 +317,33 @@ STATIC_URL = 'static/'
 # `config/urls.py`) — la descarga siempre pasa por las acciones
 # autenticadas de `FacturaViewSet`, nunca por un archivo estático abierto.
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = _ruta('MEDIA_ROOT', BASE_DIR / 'media')
 
 # Fotografías de empleado (008 · RRHH) — storage y URL propios, separados de
 # `MEDIA_ROOT`/`MEDIA_URL`, que a propósito no se conectan en `config/urls.py`
 # (ver nota arriba). Las fotos son menos sensibles que un CFDI y sí se sirven
-# por una URL estática simple bajo `DEBUG`, pero desde su propia carpeta para
+# por una URL estática simple, pero desde su propia carpeta para
 # no arrastrar esa exposición a los archivos de Facturación si en algún
 # momento `MEDIA_URL` llegara a conectarse.
 EMPLEADOS_FOTOS_URL = 'fotos-empleados/'
-EMPLEADOS_FOTOS_ROOT = BASE_DIR / 'media_rrhh' / 'fotos_empleados'
+EMPLEADOS_FOTOS_ROOT = _ruta('EMPLEADOS_FOTOS_ROOT', BASE_DIR / 'media_rrhh' / 'fotos_empleados')
 
 # Fotografías de perfil de usuario (017 · Información de Usuario y 010 ·
 # Usuarios) — mismo criterio que las de empleado: carpeta y URL propias,
-# servidas como estático solo bajo `DEBUG`. En producción, el servidor web
-# debe servir `USUARIOS_FOTOS_URL` desde `USUARIOS_FOTOS_ROOT` (igual que
-# las fotos de empleado).
+# servidas por Django también en producción (ver `config/urls.py`).
 USUARIOS_FOTOS_URL = 'fotos-usuarios/'
-USUARIOS_FOTOS_ROOT = BASE_DIR / 'media_usuarios' / 'fotos_usuarios'
+USUARIOS_FOTOS_ROOT = _ruta('USUARIOS_FOTOS_ROOT', BASE_DIR / 'media_usuarios' / 'fotos_usuarios')
+
+
+# Respaldos (023). Todo por variable de entorno, nada en el repositorio. Sin
+# R2 configurado (local, pruebas), las facturas no se suben a ningún lado.
+RESPALDO_PASSWORD = os.environ.get('RESPALDO_PASSWORD', '')
+RESPALDO_AVISO_EMAIL = os.environ.get('RESPALDO_AVISO_EMAIL', '')
+# Carpeta del equipo local (opción B) y carpeta de `pg_dump`/`pg_restore` si no
+# están en el PATH (en Windows, ej. C:/Program Files/PostgreSQL/16/bin).
+RESPALDO_CARPETA = os.environ.get('RESPALDO_CARPETA', '')
+RESPALDO_PG_BIN = os.environ.get('PG_BIN', '')
+R2_ENDPOINT = os.environ.get('R2_ENDPOINT', '')
+R2_BUCKET = os.environ.get('R2_BUCKET', '')
+R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID', '')
+R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')

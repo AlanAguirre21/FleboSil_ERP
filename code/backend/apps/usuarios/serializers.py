@@ -20,6 +20,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.modules import modulos_para_rol
 from core.permissions import ROL_ADMIN, ROL_OPERADOR
+from core.red import ip_cliente
 
 from .models import CodigoRecuperacion, RegistroAcceso
 from .protegido import MENSAJE_ADMIN_PROTEGIDO, es_admin_protegido
@@ -317,7 +318,7 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         request = self.context.get('request')
-        ip = request.META.get('REMOTE_ADDR') if request else None
+        ip = ip_cliente(request) if request else None
         usuario = Usuario.objects.filter(email__iexact=attrs['email']).first()
 
         if usuario is None:
