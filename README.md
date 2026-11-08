@@ -2,7 +2,8 @@
 
 Sistema de gestión empresarial (ERP) de **FleboSil**: ventas, compras, producción, inventario por sucursal, caja, catálogo, terceros, recursos humanos y nómina, facturación electrónica (CFDI 4.0 vía PAC), contabilidad básica, reportes y usuarios con roles.
 
-- **Frontend:** `app.flebosil.com` · **API:** `api.flebosil.com`
+- **Frontend:** `erp.flebosil.com` · **API:** `api.erp.flebosil.com` · **Correo:** `no-reply@notificaciones.flebosil.com`
+- `flebosil.com` y `www.flebosil.com` quedan reservados para el sitio web y la tienda en línea; el DNS del dominio vive en Cloudflare.
 
 ## Contenido
 
@@ -138,26 +139,27 @@ Todos se corren con `python manage.py <comando>` desde `code/backend`.
 
 ### Backend en Railway
 
-- **Servicio:** root directory `code` (ahí están `requirements.txt` y `.python-version`; los comandos entran a `backend/`) y config file `/code/backend/railway.json`. Un Volume montado en `/data` y PostgreSQL 16 en el mismo proyecto.
+- **Servicio:** root directory `code` (ahí están `requirements.txt` y `.python-version`; los comandos entran a `backend/`) y config file `/code/backend/railway.json`. Un Volume montado en `/data` y PostgreSQL **16** en el mismo proyecto (fijar la etiqueta `:16` de la imagen: los respaldos usan `pg_dump` 16).
 - **En cada despliegue:** `migrate`, `createcachetable` y `asegurar_admin`. Luego `collectstatic`, la subida de facturas pendientes y Gunicorn. Railway espera a que `/salud/` responda antes de pasarle tráfico.
 - **Variables:** las de `.env.example`, con valores de producción:
   - `DEBUG=False`
-  - `ALLOWED_HOSTS=api.flebosil.com`
-  - `CSRF_TRUSTED_ORIGINS=https://api.flebosil.com`
-  - `CORS_ALLOWED_ORIGINS=https://app.flebosil.com`
+  - `ALLOWED_HOSTS=api.erp.flebosil.com`
+  - `CSRF_TRUSTED_ORIGINS=https://api.erp.flebosil.com`
+  - `CORS_ALLOWED_ORIGINS=https://erp.flebosil.com`
   - `NUM_PROXIES=1`
   - `DB_*` como referencias a Postgres (`${{Postgres.PGHOST}}`, …)
   - `MEDIA_ROOT`, `EMPLEADOS_FOTOS_ROOT` y `USUARIOS_FOTOS_ROOT` dentro de `/data`
   - `RESEND_API_KEY` y `DEFAULT_FROM_EMAIL`
   - `ADMIN_PASSWORD` fuerte, distinta a la local
   - `SECRET_KEY` y `FISCAL_ENCRYPTION_KEY` propias de producción
-- **Correo:** sale por la API HTTP de Resend, con el dominio verificado en Resend.
+- **Dominio de la API:** `api.erp.flebosil.com` va en Cloudflare DNS como **DNS only** (nube gris). Es de dos niveles y el certificado gratuito de Cloudflare solo cubre uno; el certificado lo emite Railway.
+- **Correo:** sale por la API HTTP de Resend, con `notificaciones.flebosil.com` verificado en Resend.
 
 ### Frontend en Cloudflare Pages
 
 - Root directory `code/frontend`, build `npm run build`, salida `dist`.
-- Variable `VITE_API_URL=https://api.flebosil.com/api`. Se lee al compilar: si cambia, hay que volver a desplegar.
-- Dominio `app.flebosil.com`. Pages sirve `index.html` en cualquier ruta, así que recargar `/ventas` funciona.
+- Variable `VITE_API_URL=https://api.erp.flebosil.com/api`. Se lee al compilar: si cambia, hay que volver a desplegar.
+- Dominio `erp.flebosil.com`. Pages sirve `index.html` en cualquier ruta, así que recargar `/ventas` funciona.
 
 ### Carga inicial de datos
 
