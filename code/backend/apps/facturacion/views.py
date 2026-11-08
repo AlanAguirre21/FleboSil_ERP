@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.configuracion_fiscal.models import SerieFolio
+from apps.respaldos.facturas import respaldar_factura
 from apps.ventas.models import Venta
 from core.permissions import es_admin
 
@@ -36,7 +37,11 @@ def _guardar_archivo_factura(nombre, contenido_bytes):
     os.makedirs(carpeta, exist_ok=True)
     with open(os.path.join(carpeta, nombre), 'wb') as archivo:
         archivo.write(contenido_bytes)
-    return os.path.join('facturas', nombre)
+    ruta_relativa = os.path.join('facturas', nombre)
+    # Copia cifrada en R2 (023), después de confirmar la transacción: si el
+    # timbrado se revierte no se sube nada, y un fallo de R2 no lo bloquea.
+    transaction.on_commit(lambda: respaldar_factura(ruta_relativa))
+    return ruta_relativa
 
 
 class FacturaViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):

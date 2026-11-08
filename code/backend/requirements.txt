@@ -7,6 +7,11 @@ python-dotenv>=1.0,<2
 xhtml2pdf>=0.2,<0.3
 cryptography>=43,<51
 openpyxl>=3.1,<4
+# Producción (022): servidor WSGI y estáticos del admin sin Nginx.
+gunicorn>=23,<24
+whitenoise>=6.7,<7
+# Respaldos (023): cliente S3 para Cloudflare R2.
+boto3>=1.35,<2
 
 pytest>=8.3,<9
 pytest-django>=4.9,<5

@@ -24,3 +24,4 @@ code/backend/media_usuarios/
 .env
 .env.*
 !.env.example
+!.env.respaldo.example

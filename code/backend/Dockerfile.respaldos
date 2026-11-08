@@ -1,0 +1,16 @@
+# Imagen del trabajo programado de respaldos (023), solo para Railway.
+# El backend usa Railpack; este servicio necesita un `pg_dump` igual o más
+# nuevo que el servidor (PostgreSQL 16), que esa imagen no garantiza.
+FROM python:3.12-slim-trixie
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/* \
+    && test "$(pg_dump --version | grep -oE '[0-9]+' | head -n 1)" -ge 16
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+CMD ["python", "manage.py", "respaldar", "--destino", "r2"]
