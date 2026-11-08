@@ -1,0 +1,16 @@
+# Contexto de construcción de Railway (`code/`): solo el código del backend,
+# nunca secretos, datos ni archivos subidos.
+frontend/
+**/.env
+**/.env.*
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+backend/staticfiles/
+backend/media/
+backend/media_rrhh/
+backend/media_usuarios/
+backend/db.sqlite3
+**/*.dump
+**/*.cifrado

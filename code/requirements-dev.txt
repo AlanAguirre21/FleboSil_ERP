@@ -1,0 +1,6 @@
+# Desarrollo: producción + pruebas y lint.
+-r requirements.txt
+
+pytest>=8.3,<9
+pytest-django>=4.9,<5
+ruff>=0.7,<1
