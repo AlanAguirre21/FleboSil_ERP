@@ -44,7 +44,7 @@ InventarioSucursalMateriaPrima.objects.update_or_create(
 
 if not Usuario.objects.filter(email='admin@flebosil.test').exists():
     Usuario.objects.create_user(
-        username='admin1', email='admin@flebosil.test', password='clave-admin-123',
+        username='admin1', email='admin@flebosil.test', password='prueba-admin-dev',
         rol_usuario='admin',
     )
 
