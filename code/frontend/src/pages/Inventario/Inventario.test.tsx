@@ -265,9 +265,9 @@ describe('Inventario', () => {
     expect(indicador('Salidas')).toHaveTextContent('1')
   })
 
-  it('limita el historial a 10 movimientos por defecto, con selector 5 / 10 / Todos', () => {
+  it('pagina el historial de 10 en 10, con selector 10 / 25 / 50 / 100 / Todas', () => {
     mockearHooks()
-    const muchos = Array.from({ length: 12 }, (_, i) => ({ ...MOVIMIENTOS[0], id: 100 + i }))
+    const muchos = Array.from({ length: 30 }, (_, i) => ({ ...MOVIMIENTOS[0], id: 100 + i }))
     useMovimientosInventarioMock.mockReturnValue(
       { data: muchos, isLoading: false } as unknown as ReturnType<typeof useMovimientosInventario>,
     )
@@ -276,14 +276,17 @@ describe('Inventario', () => {
 
     const filas = () => within(screen.getByRole('table')).getAllByRole('row').length - 1
     expect(filas()).toBe(10)
-    expect(screen.getByText('Mostrando 10 de 12')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–10 de 30')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Página 3' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '5' }))
+    fireEvent.change(screen.getByLabelText('Filas por página'), { target: { value: '25' } })
+    expect(filas()).toBe(25)
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
     expect(filas()).toBe(5)
+    expect(screen.getByText('Mostrando 26–30 de 30')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
-    expect(filas()).toBe(12)
-    expect(screen.getByText('Mostrando 12 de 12')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Filas por página'), { target: { value: 'todas' } })
+    expect(filas()).toBe(30)
   })
 
   it('"Limpiar filtros" solo aparece con algún filtro aplicado y los restablece', () => {

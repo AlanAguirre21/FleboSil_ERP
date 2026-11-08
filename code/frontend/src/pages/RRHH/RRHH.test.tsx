@@ -147,21 +147,32 @@ describe('RRHH', () => {
     expect(screen.getByText('Cindy Paz')).toBeInTheDocument()
   })
 
-  it('el selector 5/10/todos recorta la lista de empleados sin volver a pedir datos', () => {
+  it('la lista de empleados de una posición tiene buscador, sin volver a pedir datos', () => {
     mockearHooks()
     render(<RRHH />)
 
     expandirVendedor()
-    const grupo = screen.getByRole('group', { name: /cantidad de empleados a mostrar/i })
-
-    fireEvent.click(within(grupo).getByRole('button', { name: '5' }))
     expect(screen.getAllByText(/Torres|Ruiz|Paz/)).toHaveLength(3)
+    const llamadas = vi.mocked(useEmpleadoPosicionesVigentes).mock.calls.length
 
-    // Con solo 3 asignaciones vigentes en el mock, "todos" y "5" se ven
-    // igual — se verifica igual que no cambie el conteo de llamadas al hook.
-    expect(useEmpleadoPosicionesVigentes).toHaveBeenCalledTimes(
-      vi.mocked(useEmpleadoPosicionesVigentes).mock.calls.length,
-    )
+    fireEvent.change(screen.getByPlaceholderText('Buscar empleado'), { target: { value: 'torres' } })
+    expect(screen.getAllByText(/Torres|Ruiz|Paz/)).toHaveLength(1)
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 3 en total)')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar empleado'), { target: { value: 'nadie' } })
+    expect(screen.getByText('Ninguna fila coincide con la búsqueda.')).toBeInTheDocument()
+
+    // Buscar y paginar es solo en pantalla: no se vuelve a llamar al hook con otros parámetros.
+    expect(vi.mocked(useEmpleadoPosicionesVigentes).mock.calls.every(([id]) => id === 11)).toBe(true)
+    expect(vi.mocked(useEmpleadoPosicionesVigentes).mock.calls.length).toBeGreaterThanOrEqual(llamadas)
+  })
+
+  it('la tabla de posiciones tiene buscador y paginación', () => {
+    mockearHooks()
+    render(<RRHH />)
+
+    expect(screen.getByPlaceholderText('Buscar posición')).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Filas por página').length).toBeGreaterThan(0)
   })
 
   it('"Nuevo empleado" captura los datos completos y una fotografía, no solo nombre/salario/fecha', () => {
@@ -343,7 +354,7 @@ describe('RRHH', () => {
     expect(tabla.getByText('Diego Sin Puesto').closest('tr')).toHaveTextContent('Sin puesto vigente')
     // "Activos" por defecto: la empleada inactiva no aparece hasta cambiar el filtro.
     expect(tabla.queryByText('Elena Baja')).not.toBeInTheDocument()
-    expect(screen.getByText('Mostrando 4 de 5')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–4 de 4 (de 5 en total)')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'inactivos' } })
     expect(within(screen.getByRole('table')).getByText('Elena Baja')).toBeInTheDocument()
@@ -358,10 +369,10 @@ describe('RRHH', () => {
     render(<RRHH />)
     fireEvent.click(screen.getByRole('tab', { name: 'Directorio' }))
 
-    fireEvent.change(screen.getByLabelText('Buscar'), { target: { value: 'paez' } })
-    expect(screen.getByText('Mostrando 1 de 3')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Buscar'), { target: { value: 'paec9001' } })
-    expect(screen.getByText('Mostrando 1 de 3')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: 'paez' } })
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 3 en total)')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: 'paec9001' } })
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 3 en total)')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }))
     fireEvent.change(screen.getByLabelText('Departamento'), { target: { value: '2' } })

@@ -186,19 +186,26 @@ describe('Terceros', () => {
     expect(screen.queryByText('Ventas de Hospital San Rafael')).not.toBeInTheDocument()
   })
 
-  it('el selector 5/10/todos limita la cantidad de ventas mostradas', () => {
+  it('el historial de ventas pagina de 10 en 10, con selector de filas y buscador', () => {
     mockearHooks({ ventas: ventasDePrueba(12) })
 
     renderTerceros()
     fireEvent.click(screen.getByRole('button', { name: /hospital san rafael/i }))
 
-    expect(screen.getAllByText('Ver detalle')).toHaveLength(5)
-
-    fireEvent.click(screen.getByRole('button', { name: '10' }))
     expect(screen.getAllByText('Ver detalle')).toHaveLength(10)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
+    // El historial es la tabla anidada: su selector es el segundo de la pantalla.
+    const selector = screen.getAllByLabelText('Filas por página')[1] as HTMLElement
+    fireEvent.change(selector, { target: { value: 'todas' } })
     expect(screen.getAllByText('Ver detalle')).toHaveLength(12)
+
+    fireEvent.change(selector, { target: { value: '10' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+    expect(screen.getAllByText('Ver detalle')).toHaveLength(2)
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar por folio, fecha o estado'), { target: { value: 'zzz' } })
+    expect(screen.queryAllByText('Ver detalle')).toHaveLength(0)
+    expect(screen.getByText('Ninguna fila coincide con la búsqueda.')).toBeInTheDocument()
   })
 
   it('un cliente sin ventas registradas muestra un mensaje vacío en vez de la lista', () => {
@@ -221,20 +228,27 @@ describe('Terceros', () => {
     expect(useComprasMock).toHaveBeenCalledWith({ proveedor: 1 })
   })
 
-  it('el selector 5/10/todos limita la cantidad de compras mostradas', () => {
+  it('el historial de compras pagina de 10 en 10, con selector de filas y buscador', () => {
     mockearHooks({ compras: comprasDePrueba(12) })
 
     renderTerceros()
     fireEvent.click(screen.getByRole('tab', { name: 'Proveedores' }))
     fireEvent.click(screen.getByRole('button', { name: /distribuidora médica/i }))
 
-    expect(screen.getAllByText('Ver detalle')).toHaveLength(5)
-
-    fireEvent.click(screen.getByRole('button', { name: '10' }))
     expect(screen.getAllByText('Ver detalle')).toHaveLength(10)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
+    // El historial es la tabla anidada: su selector es el segundo de la pantalla.
+    const selector = screen.getAllByLabelText('Filas por página')[1] as HTMLElement
+    fireEvent.change(selector, { target: { value: 'todas' } })
     expect(screen.getAllByText('Ver detalle')).toHaveLength(12)
+
+    fireEvent.change(selector, { target: { value: '10' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+    expect(screen.getAllByText('Ver detalle')).toHaveLength(2)
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar por folio, fecha o estado'), { target: { value: 'zzz' } })
+    expect(screen.queryAllByText('Ver detalle')).toHaveLength(0)
+    expect(screen.getByText('Ninguna fila coincide con la búsqueda.')).toBeInTheDocument()
   })
 
   it('la acción del encabezado corresponde a la pestaña activa y abre su formulario', () => {
@@ -286,10 +300,10 @@ describe('Terceros', () => {
     mockearHooks()
     renderTerceros()
 
-    fireEvent.change(screen.getByLabelText('Buscar'), { target: { value: 'xaxx0101' } })
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: 'xaxx0101' } })
     expect(screen.getByText('Farmacia del Centro')).toBeInTheDocument()
     expect(screen.queryByText('Hospital San Rafael')).not.toBeInTheDocument()
-    expect(screen.getByText('Mostrando 1 de 2')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 2 en total)')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }))
     fireEvent.change(screen.getByLabelText('Factura'), { target: { value: 'no_requiere' } })
@@ -325,7 +339,7 @@ describe('Terceros', () => {
 
     expect(screen.getByText('Químicos del Bajío').closest('tr')).toHaveTextContent('QBA010101AB1')
 
-    fireEvent.change(screen.getByLabelText('Buscar'), { target: { value: 'lucia' } })
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: 'lucia' } })
     expect(screen.getByText('Químicos del Bajío')).toBeInTheDocument()
     expect(screen.queryByText('Distribuidora Médica')).not.toBeInTheDocument()
   })

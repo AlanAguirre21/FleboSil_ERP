@@ -9,6 +9,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from core.permissions import ROL_ADMIN, EsAdmin
 
 from .models import Usuario
+from .protegido import MENSAJE_ADMIN_PROTEGIDO, es_admin_protegido
 from .serializers import (
     CambiarContrasenaSerializer,
     LoginSerializer,
@@ -154,6 +155,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         (una `ValidationError` con un string plano se serializa como una
         lista, no como ese formato — ver constitución, "API errors").
         """
+        if es_admin_protegido(instance):
+            return MENSAJE_ADMIN_PROTEGIDO
+
         if instance == self.request.user:
             return 'No puedes desactivar tu propia cuenta.'
 

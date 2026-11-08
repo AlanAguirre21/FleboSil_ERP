@@ -140,11 +140,11 @@ describe('PestanaNominas', () => {
   it('busca por nombre sin distinguir acentos', () => {
     render(<PestanaNominas />)
 
-    fireEvent.change(screen.getByLabelText('Buscar'), { target: { value: 'munoz' } })
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: 'munoz' } })
 
     expect(screen.getByText('Beto Muñoz')).toBeInTheDocument()
     expect(screen.queryByText('Ana Ruiz')).not.toBeInTheDocument()
-    expect(screen.getByText('Mostrando 1 de 5')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 5 en total)')).toBeInTheDocument()
   })
 
   it('las acciones dependen del estado', () => {

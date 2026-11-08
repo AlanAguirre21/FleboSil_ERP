@@ -12,7 +12,6 @@ import {
   ETIQUETAS_ROL,
   generarPasswordAleatoria,
   type CambioFoto,
-  type LimiteAccesos,
   type RegistroAcceso,
   type UsuarioCuenta,
 } from '../../api/usuarios'
@@ -341,15 +340,6 @@ function UsuariosContenido() {
       </div>
 
       <div className="filters">
-        <label className="filterField">
-          Buscar
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Nombre, usuario o correo"
-          />
-        </label>
 
         <label className="filterField">
           Rol
@@ -376,10 +366,11 @@ function UsuariosContenido() {
         <p>Cargando usuarios…</p>
       ) : (
         <>
-          <span className="pageHint">{`Mostrando ${usuariosVisibles.length} de ${lista.length}`}</span>
           <Tabla
             columnas={columnas}
             datos={usuariosVisibles}
+            placeholderBusqueda="Buscar por nombre, usuario o correo"
+            busquedaControlada={{ valor: busqueda, onCambiar: setBusqueda, total: lista.length }}
             mensajeVacio={
               hayFiltros ? 'Ningún usuario coincide con los filtros.' : 'Todavía no hay usuarios registrados.'
             }
@@ -571,10 +562,9 @@ function formatearFechaAcceso(fecha: string): string {
 }
 
 function AccesosDeUsuarioSeccion({ usuario }: { usuario: UsuarioCuenta }) {
-  const [limite, setLimite] = useState<LimiteAccesos>('5')
-  const { data: accesos, isLoading } = useAccesosUsuario(usuario.id, limite)
+  // Se carga el historial completo; la tabla lo pagina en pantalla.
+  const { data: accesos, isLoading } = useAccesosUsuario(usuario.id, 'todos')
 
-  // Resumen de los accesos cargados (5, 10 o todos), no de todo el historial.
   const lista = accesos ?? []
   const ultimoExitoso = lista
     .filter((a) => a.tipo === 'exitoso')
@@ -603,18 +593,6 @@ function AccesosDeUsuarioSeccion({ usuario }: { usuario: UsuarioCuenta }) {
     <div className="expandedSection">
       <div className="sectionHeader">
         <h3 className="subtitle">Historial de accesos de {usuario.username}</h3>
-        <div className="segmented" role="group" aria-label="Cantidad de accesos a mostrar">
-          {(['5', '10', 'todos'] as LimiteAccesos[]).map((valor) => (
-            <button
-              key={valor}
-              type="button"
-              className={limite === valor ? 'segmentedOption segmentedOptionActive' : 'segmentedOption'}
-              onClick={() => setLimite(valor)}
-            >
-              {valor === 'todos' ? 'Todos' : valor}
-            </button>
-          ))}
-        </div>
       </div>
 
       {isLoading ? (
@@ -625,15 +603,15 @@ function AccesosDeUsuarioSeccion({ usuario }: { usuario: UsuarioCuenta }) {
         <>
           <dl className="factGrid">
             <div>
-              <dt>Último inicio de sesión (en los accesos mostrados)</dt>
+              <dt>Último inicio de sesión</dt>
               <dd>{ultimoExitoso ? formatearFechaAcceso(ultimoExitoso.creado_en) : '—'}</dd>
             </div>
             <div>
-              <dt>Intentos fallidos (en los accesos mostrados)</dt>
+              <dt>Intentos fallidos</dt>
               <dd>{fallidos}</dd>
             </div>
           </dl>
-          <Tabla columnas={columnas} datos={lista} />
+          <Tabla columnas={columnas} datos={lista} placeholderBusqueda="Buscar por tipo, fecha o IP" />
         </>
       )}
     </div>

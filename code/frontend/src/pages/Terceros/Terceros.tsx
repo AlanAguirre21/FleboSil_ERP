@@ -47,34 +47,11 @@ function extraerMensajeError(err: unknown, campos: string[], mensajePorDefecto: 
   return mensajePorDefecto
 }
 
-type LimiteLista = '5' | '10' | 'todos'
-
 function alternarEnConjunto(conjunto: Set<number>, id: number): Set<number> {
   const nuevo = new Set(conjunto)
   if (nuevo.has(id)) nuevo.delete(id)
   else nuevo.add(id)
   return nuevo
-}
-
-function SelectorLimite({ limite, onCambiar, etiqueta }: {
-  limite: LimiteLista
-  onCambiar: (valor: LimiteLista) => void
-  etiqueta: string
-}) {
-  return (
-    <div className="segmented" role="group" aria-label={etiqueta}>
-      {(['5', '10', 'todos'] as LimiteLista[]).map((valor) => (
-        <button
-          key={valor}
-          type="button"
-          className={limite === valor ? 'segmentedOption segmentedOptionActive' : 'segmentedOption'}
-          onClick={() => onCambiar(valor)}
-        >
-          {valor === 'todos' ? 'Todos' : valor}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos'
@@ -171,7 +148,6 @@ function claseEstadoDocumento(estado: string): string {
 
 function EstadoDeCuenta({
   titulo,
-  etiquetaSelector,
   etiquetaDocumentos,
   etiquetaUltimo,
   documentos,
@@ -180,7 +156,6 @@ function EstadoDeCuenta({
   ayuda,
 }: {
   titulo: string
-  etiquetaSelector: string
   etiquetaDocumentos: string
   etiquetaUltimo: string
   documentos: DocumentoCuenta[] | undefined
@@ -189,10 +164,7 @@ function EstadoDeCuenta({
   // Aclaración bajo el título (ej. "Solo tus ventas…" para el operador).
   ayuda?: string
 }) {
-  const [limite, setLimite] = useState<LimiteLista>('5')
-
   const ordenados = [...(documentos ?? [])].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-  const recortados = limite === 'todos' ? ordenados : ordenados.slice(0, Number(limite))
   // El importe no cuenta documentos cancelados, igual que los listados de Ventas y Compras.
   const importe = ordenados.filter((d) => d.estado !== 'cancelada').reduce((suma, d) => suma + Number(d.total), 0)
   const ultimo = ordenados[0]
@@ -232,7 +204,6 @@ function EstadoDeCuenta({
           <h3 className="subtitle">{titulo}</h3>
           {ayuda && <span className="fieldHint">{ayuda}</span>}
         </div>
-        <SelectorLimite limite={limite} onCambiar={setLimite} etiqueta={etiquetaSelector} />
       </div>
 
       {cargando ? (
@@ -255,7 +226,7 @@ function EstadoDeCuenta({
               <dd>{ultimo ? new Date(ultimo.fecha).toLocaleDateString('es-MX') : '—'}</dd>
             </div>
           </dl>
-          <Tabla columnas={columnas} datos={recortados} />
+          <Tabla columnas={columnas} datos={ordenados} placeholderBusqueda="Buscar por folio, fecha o estado" />
         </>
       )}
     </div>
@@ -270,7 +241,6 @@ function VentasDeClienteSeccion({ cliente }: { cliente: Cliente }) {
   return (
     <EstadoDeCuenta
       titulo={`Ventas de ${cliente.nombre_cliente}`}
-      etiquetaSelector="Cantidad de ventas a mostrar"
       etiquetaDocumentos="Ventas"
       etiquetaUltimo="Última venta"
       cargando={isLoading}
@@ -296,7 +266,6 @@ function ComprasDeProveedorSeccion({ proveedor }: { proveedor: Proveedor }) {
   return (
     <EstadoDeCuenta
       titulo={`Compras a ${proveedor.nombre_proveedor}`}
-      etiquetaSelector="Cantidad de compras a mostrar"
       etiquetaDocumentos="Compras"
       etiquetaUltimo="Última compra"
       cargando={isLoading}
@@ -539,15 +508,6 @@ function PestañaClientes({ solicitudNuevo }: { solicitudNuevo: number }) {
   return (
     <div className="tabPanel">
       <div className="filters">
-        <label className="filterField">
-          Buscar
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Nombre o RFC"
-          />
-        </label>
 
         <label className="filterField">
           Factura
@@ -571,10 +531,11 @@ function PestañaClientes({ solicitudNuevo }: { solicitudNuevo: number }) {
         <p>Cargando clientes…</p>
       ) : (
         <>
-          <span className="pageHint">{`Mostrando ${filtrados.length} de ${lista.length}`}</span>
           <Tabla
             columnas={columnas}
             datos={filtrados}
+            placeholderBusqueda="Buscar por nombre o RFC"
+            busquedaControlada={{ valor: busqueda, onCambiar: setBusqueda, total: lista.length }}
             mensajeVacio={
               hayFiltros ? 'Ningún cliente coincide con los filtros.' : 'Todavía no hay clientes registrados.'
             }
@@ -875,15 +836,6 @@ function PestañaProveedores({ solicitudNuevo }: { solicitudNuevo: number }) {
   return (
     <div className="tabPanel">
       <div className="filters">
-        <label className="filterField">
-          Buscar
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Nombre o RFC"
-          />
-        </label>
 
         <FiltroEstadoSelect valor={estado} onCambiar={setEstado} />
 
@@ -898,10 +850,11 @@ function PestañaProveedores({ solicitudNuevo }: { solicitudNuevo: number }) {
         <p>Cargando proveedores…</p>
       ) : (
         <>
-          <span className="pageHint">{`Mostrando ${filtrados.length} de ${lista.length}`}</span>
           <Tabla
             columnas={columnas}
             datos={filtrados}
+            placeholderBusqueda="Buscar por nombre o RFC"
+            busquedaControlada={{ valor: busqueda, onCambiar: setBusqueda, total: lista.length }}
             mensajeVacio={
               hayFiltros ? 'Ningún proveedor coincide con los filtros.' : 'Todavía no hay proveedores registrados.'
             }

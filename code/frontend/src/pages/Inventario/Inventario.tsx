@@ -365,17 +365,12 @@ function PestañaExistencias({
 
 // --- Movimientos -------------------------------------------------------------
 
-type LimiteMovimientos = '5' | '10' | 'todos'
-
-const ETIQUETAS_LIMITE: Record<LimiteMovimientos, string> = { '5': '5', '10': '10', todos: 'Todos' }
-
 function PestañaMovimientos({ sucursalesActivas }: { sucursalesActivas: Sucursal[] }) {
   const [tipoItem, setTipoItem] = useState<TipoItemInventario | ''>('')
   const [item, setItem] = useState<number | ''>('')
   const [sucursal, setSucursal] = useState<number | ''>('')
   const [tipoMovimiento, setTipoMovimiento] = useState<TipoMovimientoInventario | ''>('')
   const [motivo, setMotivo] = useState<FiltroMotivoMovimientoInventario | ''>('')
-  const [limite, setLimite] = useState<LimiteMovimientos>('10')
 
   const { data: productos } = useProductos()
   const { data: materiaPrima } = useMateriaPrima()
@@ -407,8 +402,7 @@ function PestañaMovimientos({ sucursalesActivas }: { sucursalesActivas: Sucursa
 
   const lista = useMemo(() => movimientos ?? [], [movimientos])
   const entradas = lista.filter((m) => m.tipo_movimiento === 'entrada').length
-  // La API ya los entrega del más reciente al más antiguo; el límite solo recorta en pantalla.
-  const visibles = limite === 'todos' ? lista : lista.slice(0, Number(limite))
+  // La API ya los entrega del más reciente al más antiguo; Tabla pagina en pantalla.
 
   const columnas: ColumnaTabla<MovimientoInventario>[] = [
     {
@@ -533,31 +527,12 @@ function PestañaMovimientos({ sucursalesActivas }: { sucursalesActivas: Sucursa
         )}
       </div>
 
-      <div className="sectionHeader">
-        <span className="pageHint">
-          {movimientos ? `Mostrando ${visibles.length} de ${lista.length}` : ''}
-        </span>
-        <div className="segmented" role="group" aria-label="Cantidad de movimientos a mostrar">
-          {(['5', '10', 'todos'] as LimiteMovimientos[]).map((valor) => (
-            <button
-              key={valor}
-              type="button"
-              className={limite === valor ? 'segmentedOption segmentedOptionActive' : 'segmentedOption'}
-              aria-pressed={limite === valor}
-              onClick={() => setLimite(valor)}
-            >
-              {ETIQUETAS_LIMITE[valor]}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {isLoading ? (
         <p>Cargando historial…</p>
       ) : (
         <Tabla
           columnas={columnas}
-          datos={visibles}
+          datos={lista}
           mensajeVacio={
             hayFiltros
               ? 'Ningún movimiento coincide con los filtros.'

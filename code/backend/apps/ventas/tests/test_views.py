@@ -464,3 +464,18 @@ def test_no_permite_editar_ni_borrar_una_venta(api_client, sucursal, producto, s
     assert api_client.put(f'/api/ventas/{id_venta}/', {}, format='json').status_code == 405
     assert api_client.patch(f'/api/ventas/{id_venta}/', {}, format='json').status_code == 405
     assert api_client.delete(f'/api/ventas/{id_venta}/').status_code == 405
+
+
+# --- 022: la fecha histórica solo la escribe la carga inicial ----------------
+
+
+@pytest.mark.django_db
+def test_crear_venta_ignora_fecha_enviada(api_client, sucursal, producto, stock):
+    payload = _payload_venta(sucursal, producto, cantidad='1.00')
+    payload['fecha'] = '2020-01-01T12:00:00Z'
+    response = api_client.post('/api/ventas/', payload, format='json')
+
+    assert response.status_code == 201
+    venta = Venta.objects.get(pk=response.data['id'])
+    assert venta.fecha.year != 2020
+    assert MovimientoCaja.objects.get(referencia_id=venta.id).fecha.year != 2020

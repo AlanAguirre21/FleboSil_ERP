@@ -136,6 +136,11 @@ DATABASES = {
 
 AUTH_USER_MODEL = 'usuarios.Usuario'
 
+# Administrador de control (022): siempre existe y no se puede modificar
+# desde la app. Lo crea/restaura `manage.py asegurar_admin` con la
+# contraseña de la variable `ADMIN_PASSWORD` (nunca en el código).
+ADMIN_PROTEGIDO_EMAIL = 'admin@flebosil.com'
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

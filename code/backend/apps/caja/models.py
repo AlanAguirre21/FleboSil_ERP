@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class MovimientoCaja(models.Model):
@@ -62,7 +63,10 @@ class MovimientoCaja(models.Model):
     saldo_adicional_resultante = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     observacion = models.TextField(blank=True)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='movimientos_caja')
-    fecha = models.DateTimeField(auto_now_add=True)
+    # `default` en vez de `auto_now_add`: la carga inicial (022) escribe la
+    # fecha histórica del xlsx; desde la app siempre es el momento de creación
+    # (los serializers la tienen de solo lectura).
+    fecha = models.DateTimeField(default=timezone.now)
 
     class Meta:
         verbose_name_plural = 'movimientos de caja'

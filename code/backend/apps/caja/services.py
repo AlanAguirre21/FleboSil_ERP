@@ -43,7 +43,7 @@ def calcular_saldos():
     }
 
 
-def registrar_movimiento_caja(*, tipo_movimiento, monto, motivo, referencia_id, usuario, observacion=''):
+def registrar_movimiento_caja(*, tipo_movimiento, monto, motivo, referencia_id, usuario, observacion='', fecha=None):
     """Única función autorizada para insertar un `MovimientoCaja` — tanto
     el ingreso/reverso automático de `011 · Ventas` como el registro
     manual de `013 · Caja` pasan por aquí, para que el bloqueo de
@@ -53,6 +53,9 @@ def registrar_movimiento_caja(*, tipo_movimiento, monto, motivo, referencia_id, 
     Debe llamarse dentro de una `transaction.atomic()` ya abierta por
     quien invoca — el `select_for_update()` sobre el último movimiento
     solo tiene efecto de bloqueo dentro de una transacción activa.
+
+    `fecha` solo la pasa la carga inicial de datos (022) para conservar la
+    fecha histórica; desde la app se omite y toma el momento actual.
     """
 
     ultimo = MovimientoCaja.objects.select_for_update().order_by('-id').first()
@@ -86,7 +89,7 @@ def registrar_movimiento_caja(*, tipo_movimiento, monto, motivo, referencia_id, 
     movimiento = MovimientoCaja.objects.create(
         monto=monto, tipo_movimiento=tipo_movimiento, motivo=motivo, referencia_id=referencia_id,
         saldo_resultante=nuevo_saldo, saldo_adicional_resultante=nuevo_saldo_adicional,
-        observacion=observacion, usuario=usuario,
+        observacion=observacion, usuario=usuario, **({'fecha': fecha} if fecha else {}),
     )
 
     # Único punto de entrada de `MovimientoCaja` (ver docstring de esta

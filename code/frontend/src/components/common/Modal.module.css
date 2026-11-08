@@ -1,33 +1,126 @@
 @reference "../../index.css";
 
+/* Estructura convencional de un diálogo: encabezado fijo (título + ✕),
+   contenido con desplazamiento propio y barra de acciones fija abajo. En
+   pantallas angostas se abre como hoja inferior a todo el ancho. */
+
 .overlay {
-  @apply fixed inset-0 bg-texto/50 flex items-center justify-center p-4 z-50;
+  @apply fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6 bg-texto/45 backdrop-blur-[2px];
+  animation: aparecerFondo 160ms ease-out;
 }
 
 .dialog {
-  @apply w-full max-w-[480px] max-h-[90vh] overflow-y-auto bg-superficie rounded-tarjeta shadow-marcada;
+  @apply relative flex flex-col w-full max-h-[92dvh] sm:max-h-[88dvh] sm:max-w-[520px] bg-superficie overflow-hidden outline-none rounded-t-tarjeta sm:rounded-tarjeta shadow-marcada;
+  animation: subirHoja 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (width >= 480px) {
+  .dialog {
+    animation-name: aparecerDialogo;
+  }
+}
+
+/* Franja de marca, la misma del encabezado de la app. */
+.dialog::before {
+  content: '';
+  @apply absolute top-0 inset-x-0 h-[3px] bg-linear-to-r from-primario via-inicio to-secundario;
 }
 
 .dialogWide {
-  @apply max-w-[760px];
+  @apply sm:max-w-[800px];
 }
 
 .dialogHeader {
-  @apply flex items-center justify-between gap-3 px-6 py-4 border-b border-borde;
+  @apply flex items-start justify-between gap-4 shrink-0 px-5 sm:px-7 pt-6 pb-4 border-b border-borde;
+}
+
+.dialogHeading {
+  @apply flex flex-col gap-1 min-w-0;
 }
 
 .dialogTitle {
-  @apply m-0 text-texto text-lg font-titulo font-semibold;
+  @apply m-0 text-texto text-xl font-titulo font-semibold leading-snug;
+}
+
+.dialogDescription {
+  @apply m-0 text-[0.875rem] text-texto-suave;
 }
 
 .closeButton {
-  @apply flex items-center justify-center w-8 h-8 shrink-0 bg-transparent border-0 text-texto-suave text-base leading-none cursor-pointer rounded-control transition-colors;
+  @apply flex items-center justify-center w-9 h-9 -mr-2 -mt-1 shrink-0 bg-transparent border-0 text-texto-suave cursor-pointer rounded-pildora transition-colors;
 }
 
 .closeButton:hover {
   @apply bg-primario-suave text-primario;
 }
 
+.closeButton:focus-visible {
+  @apply outline-2 outline-offset-2 outline-primario;
+}
+
 .dialogBody {
-  @apply px-6 py-5;
+  @apply flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-7 py-5;
+}
+
+/* Barra de acciones: los botones finales del modal (los de una confirmación
+   o los de un formulario, `.formActions` al final del contenido, directo o
+   dentro de su envoltorio) quedan fijos abajo, separados del contenido, con
+   la acción principal a la derecha. Se aplica sin tocar cada pantalla. */
+.dialogBody:has(> :global(.formActions):last-child),
+.dialogBody:has(> :last-child > :global(.formActions):last-child),
+.dialogBody:has(> :last-child > :last-child > :global(.formActions):last-child) {
+  @apply pb-0;
+}
+
+.dialogBody > :global(.formActions):last-child,
+.dialogBody > :last-child > :global(.formActions):last-child,
+.dialogBody > :last-child > :last-child > :global(.formActions):last-child {
+  @apply sticky bottom-0 z-10 -mx-5 sm:-mx-7 mt-2 px-5 sm:px-7 py-4 bg-fondo border-t border-borde;
+}
+
+/* En un teléfono los botones ocupan el ancho (más fáciles de tocar), con la
+   acción principal arriba. */
+@media (width < 480px) {
+  .dialogBody > :global(.formActions):last-child,
+  .dialogBody > :last-child > :global(.formActions):last-child,
+  .dialogBody > :last-child > :last-child > :global(.formActions):last-child {
+    @apply flex-col-reverse items-stretch;
+  }
+}
+
+/* El texto de una confirmación ya no necesita margen: lo separa la barra. */
+.dialogBody > :global(.confirmText) {
+  @apply mb-0 text-[0.95rem] leading-relaxed;
+}
+
+@keyframes aparecerFondo {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes aparecerDialogo {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes subirHoja {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .dialog {
+    animation: none;
+  }
+}
+
+/* Encabezados de sección dentro de un formulario del modal ("Identificación",
+   "Precio y costo"): mismo estilo de rótulo que los documentos de alta. */
+.dialogBody :global(.subtitle) {
+  @apply text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-primario;
 }

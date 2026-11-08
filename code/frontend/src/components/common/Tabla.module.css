@@ -1,7 +1,13 @@
 @reference "../../index.css";
 
 /* La tabla en sí usa la clase global dataTable; aquí solo vive la superficie
-   que la contiene y su estado vacío. */
+   que la contiene y su estado vacío. Búsqueda y paginación: Paginacion.tsx. */
+.tableWrapper {
+  @apply flex flex-col gap-3 min-w-0;
+}
+
+/* `overflow-x-auto` queda solo como respaldo para pantallas angostas: en
+   escritorio la tabla se ajusta al ancho disponible (ver `.dataTable`). */
 .tableContainer {
   @apply w-full overflow-x-auto bg-superficie border border-borde rounded-tarjeta shadow-suave;
 }

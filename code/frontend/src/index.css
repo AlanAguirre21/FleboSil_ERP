@@ -171,18 +171,25 @@
     @apply grid grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3;
   }
 
+  /* Cada tarjeta es un contenedor de consulta: la cifra toma su tamaño del
+     ancho de SU tarjeta, no del de la ventana. */
   .statTile {
     @apply flex flex-col gap-1 min-w-0 px-4 md:px-5 py-4 bg-superficie border border-borde rounded-tarjeta shadow-suave;
+    container-type: inline-size;
   }
 
   .statLabel {
-    @apply text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-texto-suave;
+    @apply text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-texto-suave leading-snug;
   }
 
-  /* La cifra nunca se parte (un importe cortado en dos líneas se lee mal);
-     en pantallas muy angostas baja de tamaño para que quepan dos por fila. */
+  /* La cifra nunca se parte (un importe cortado en dos líneas se lee mal): en
+     vez de salirse de la tarjeta, se achica con el ancho de la tarjeta
+     (`cqi`), entre 1rem y el tamaño completo de 1.875rem. Así un importe
+     de millones con signo ("+$2,608,694.97") cabe en una tarjeta angosta y
+     una cifra corta se ve igual de grande que antes. */
   .statValue {
-    @apply text-xl sm:text-2xl md:text-3xl font-titulo font-semibold text-texto tabular-nums whitespace-nowrap;
+    @apply font-titulo font-semibold text-texto tabular-nums whitespace-nowrap leading-tight;
+    font-size: clamp(1rem, 11.5cqi, 1.875rem);
   }
 
   /* Indicador destacado con el tono del documento: ventas en primario, compras
@@ -464,7 +471,7 @@
   /* --- Acciones y enlaces ------------------------------------------------ */
 
   .rowActions {
-    @apply flex items-center gap-3;
+    @apply flex items-center gap-x-3 gap-y-1 flex-wrap;
   }
 
   .actionLink {
@@ -506,16 +513,31 @@
     @apply w-full overflow-x-auto;
   }
 
+  /* Listado paginado escrito a mano (sin `Tabla`): buscador, contenido y
+     paginación apilados con la misma separación que usa `Tabla`. */
+  .tableStack {
+    @apply flex flex-col gap-3 min-w-0;
+  }
+
+  /* "Sin coincidencias" debajo de una tabla escrita a mano. */
+  .tableEmptyMessage {
+    @apply px-4 py-6 text-center;
+  }
+
+  /* La tabla se ajusta al ancho de su contenedor: los encabezados y el texto
+     largo se parten en varias líneas en vez de empujar la tabla fuera de la
+     pantalla (con zoom al 100 %). Lo que no debe partirse (fechas, montos,
+     estados) usa `cellNoWrap`, `numeric` o `status`. */
   .dataTable {
     @apply w-full border-collapse text-left text-[0.9rem] tabular-nums;
   }
 
   .dataTable thead th {
-    @apply px-4 py-3 bg-fondo text-[0.8rem] text-texto-suave font-semibold border-b border-borde whitespace-nowrap;
+    @apply px-3 py-3 bg-fondo text-[0.8rem] text-texto-suave font-semibold border-b border-borde align-bottom;
   }
 
   .dataTable tbody td {
-    @apply px-4 py-3 text-texto border-b border-borde align-middle;
+    @apply px-3 py-2.5 text-texto border-b border-borde align-middle wrap-break-word;
   }
 
   .dataTable tbody tr:hover {
@@ -563,6 +585,12 @@
   /* Columna numérica o de dinero. */
   .numeric {
     @apply text-right;
+  }
+
+  /* Un monto nunca se parte; su encabezado sí puede. */
+  .dataTable tbody td.numeric,
+  .dataTable tfoot td.numeric {
+    @apply whitespace-nowrap;
   }
 
   /* Contenido de celda que no debe partirse en dos líneas (fechas, folios). */

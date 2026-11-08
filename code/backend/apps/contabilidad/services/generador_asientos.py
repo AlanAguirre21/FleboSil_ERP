@@ -39,7 +39,7 @@ def _cuenta(codigo):
     return CuentaContable.objects.get(codigo=codigo)
 
 
-def _crear_asiento(*, concepto, tipo_origen, referencia_id, usuario, lineas):
+def _crear_asiento(*, concepto, tipo_origen, referencia_id, usuario, lineas, fecha=None):
     """`lineas`: iterable de `(codigo_cuenta, tipo_movimiento, monto)`.
     Valida que la suma de cargos sea igual a la suma de abonos antes de
     confirmar — un asiento descuadrado nunca se guarda.
@@ -56,6 +56,7 @@ def _crear_asiento(*, concepto, tipo_origen, referencia_id, usuario, lineas):
     with transaction.atomic():
         asiento = AsientoContable.objects.create(
             concepto=concepto, tipo_origen=tipo_origen, referencia_id=referencia_id, usuario=usuario,
+            **({'fecha': fecha} if fecha else {}),
         )
         MovimientoContable.objects.bulk_create([
             MovimientoContable(
@@ -182,4 +183,6 @@ def generar_asiento_caja(movimiento_caja):
         concepto=movimiento_caja.observacion or f'Movimiento de caja #{movimiento_caja.id}',
         tipo_origen=AsientoContable.ORIGEN_CAJA, referencia_id=movimiento_caja.referencia_id,
         usuario=movimiento_caja.usuario, lineas=lineas,
+        # Misma fecha que su movimiento de caja (histórica en la carga inicial).
+        fecha=movimiento_caja.fecha,
     )

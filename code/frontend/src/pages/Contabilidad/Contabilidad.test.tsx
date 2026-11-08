@@ -229,7 +229,7 @@ describe('Contabilidad', () => {
     expect(screen.getByText('Descuadre de 10.00')).toBeInTheDocument()
   })
 
-  it('el libro diario muestra 10 pólizas por defecto, con selector 5 / 10 / Todos', () => {
+  it('el libro diario pagina las pólizas de 10 en 10, con buscador y selector de filas', () => {
     mockUsuarioActual('admin')
     mockearHooks()
     const muchos = Array.from({ length: 12 }, (_, i) => ({ ...(ASIENTOS[0] as AsientoContable), id: 100 + i }))
@@ -237,15 +237,19 @@ describe('Contabilidad', () => {
     renderContabilidad()
     fireEvent.click(screen.getByRole('tab', { name: 'Libro diario' }))
 
-    const polizas = () => screen.getAllByRole('button', { name: /póliza #/i }).length
+    const polizas = () => screen.queryAllByRole('button', { name: /póliza #/i }).length
     expect(polizas()).toBe(10)
-    expect(screen.getByText('Mostrando 10 de 12')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–10 de 12')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '5' }))
-    expect(polizas()).toBe(5)
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(polizas()).toBe(2)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
+    fireEvent.change(screen.getByLabelText('Filas por página'), { target: { value: 'todas' } })
     expect(polizas()).toBe(12)
+
+    fireEvent.change(screen.getByLabelText('Buscar en la tabla'), { target: { value: '#105' } })
+    expect(polizas()).toBe(1)
+    expect(screen.getByText('Póliza #105')).toBeInTheDocument()
   })
 
   it('"Limpiar filtros" en el libro diario restablece los filtros', () => {
