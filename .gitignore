@@ -5,7 +5,7 @@
 /.agents
 
 # FILES
-Base de Datos Flebosil.txt
+Base de Datos FleboSil.txt
 CLAUDE.md
 skills-lock.json
 
@@ -16,12 +16,31 @@ __pycache__/
 db.sqlite3
 staticfiles/
 .pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 code/backend/media/
 code/backend/media_rrhh/
 code/backend/media_usuarios/
+
+# Frontend (además de code/frontend/.gitignore)
+code/frontend/tsconfig.tsbuildinfo
+
+# Datos y respaldos: nunca al repositorio (datos personales y del negocio)
+*.dump
+*.cifrado
+*.parcial
+respaldos.log
+
+# Editores / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
 # Env / secrets
 .env
 .env.*
 !.env.example
+# Plantilla del respaldo local (023); el real `.env.respaldo` queda fuera.
 !.env.respaldo.example

@@ -1,18 +1,21 @@
+# Dependencias de producción del backend (code/backend). Las de pruebas y lint están en
+# requirements-dev.txt (en desarrollo: pip install -r requirements-dev.txt).
 Django>=6.0,<6.1
 djangorestframework>=3.17,<3.18
 djangorestframework-simplejwt>=5.3,<6
 django-cors-headers>=4.4,<5
 psycopg2-binary>=2.9,<3
 python-dotenv>=1.0,<2
+# Conexión al PAC de Facturación (019).
+requests>=2.32,<3
+# PDF de tickets y facturas.
 xhtml2pdf>=0.2,<0.3
+# Cifrado de la API key del PAC (018) y de los respaldos (023).
 cryptography>=43,<51
+# Carga de datos iniciales desde xlsx (022).
 openpyxl>=3.1,<4
 # Producción (022): servidor WSGI y estáticos del admin sin Nginx.
 gunicorn>=23,<24
 whitenoise>=6.7,<7
 # Respaldos (023): cliente S3 para Cloudflare R2.
 boto3>=1.35,<2
-
-pytest>=8.3,<9
-pytest-django>=4.9,<5
-ruff>=0.7,<1
