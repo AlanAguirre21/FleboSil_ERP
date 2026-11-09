@@ -60,8 +60,7 @@ code/
 │   ├── core/                permisos, errores JSON, IP del cliente, correo por Resend
 │   ├── apps/                una app por módulo (ventas, caja, inventario, …, respaldos)
 │   ├── scripts/             respaldo local en Windows (PowerShell)
-│   ├── railway.json         despliegue del backend
-│   └── railway.respaldos.json + Dockerfile.respaldos   trabajo programado de respaldos
+│   └── Dockerfile.respaldos imagen del trabajo programado de respaldos (pg_dump 16)
 └── frontend/                React + Vite
     └── src/
         ├── api/             una función por endpoint
@@ -139,8 +138,10 @@ Todos se corren con `python manage.py <comando>` desde `code/backend`.
 
 ### Backend en Railway
 
-- **Servicio:** root directory `code` (ahí están `requirements.txt` y `.python-version`; los comandos entran a `backend/`) y config file `/code/backend/railway.json`. Un Volume montado en `/data` y PostgreSQL **16** en el mismo proyecto (fijar la etiqueta `:16` de la imagen: los respaldos usan `pg_dump` 16).
-- **En cada despliegue:** `migrate`, `createcachetable` y `asegurar_admin`. Luego `collectstatic`, la subida de facturas pendientes y Gunicorn. Railway espera a que `/salud/` responda antes de pasarle tráfico.
+- **Servicio:** root directory `code` (ahí están `requirements.txt` y `.python-version`; los comandos entran a `backend/`). La configuración se captura en el panel de Railway (Railway ya no lee `railway.json` en servicios nuevos). Un Volume montado en `/data` y PostgreSQL **16** en el mismo proyecto (fijar la etiqueta `:16` de la imagen: los respaldos usan `pg_dump` 16).
+- **Pre-deploy command:** `sh -c 'cd backend && python manage.py migrate --noinput && python manage.py createcachetable && python manage.py asegurar_admin'`
+- **Start command:** `sh -c 'cd backend && python manage.py collectstatic --noinput && python manage.py subir_facturas_pendientes && gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile -'`
+- **Healthcheck path:** `/salud/`. Railway espera a que responda antes de pasarle tráfico. Restart policy: on failure.
 - **Variables:** las de `.env.example`, con valores de producción:
   - `DEBUG=False`
   - `ALLOWED_HOSTS=api.erp.flebosil.com`
@@ -176,7 +177,7 @@ Si el resumen coincide, se vuelve a correr sin `--simular`.
 
 Cada **domingo a las 3:00** (hora de la Ciudad de México), la base se respalda cifrada con `RESPALDO_PASSWORD` en dos lugares:
 
-1. **Cloudflare R2:** servicio programado de Railway con root `code`, config file `/code/backend/railway.respaldos.json` y las mismas variables que el backend más `R2_*` y `RESPALDO_AVISO_EMAIL`.
+1. **Cloudflare R2:** servicio programado de Railway con root `code`, `RAILWAY_DOCKERFILE_PATH=backend/Dockerfile.respaldos`, cron schedule `0 9 * * 0`, restart policy never y las mismas variables que el backend más `R2_*` y `RESPALDO_AVISO_EMAIL`.
 2. **Equipo local (Windows):** copiar `code/backend/.env.respaldo.example` a `.env.respaldo`, llenarlo y luego:
    ```powershell
    cd code\backend\scripts
