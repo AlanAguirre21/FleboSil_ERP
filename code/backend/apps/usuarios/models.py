@@ -76,6 +76,11 @@ class Usuario(AbstractUser):
     foto_usuario = models.ImageField(
         upload_to=ruta_foto_usuario, storage=almacenamiento_fotos_usuario, null=True, blank=True,
     )
+    # Avisos por correo para admins (`001`, "Actualización: centro de
+    # notificaciones y avisos por correo"). Cada admin los cambia en
+    # "Información de usuario"; activados por defecto.
+    recibe_resumen_diario = models.BooleanField(default=True)
+    recibe_alertas_criticas = models.BooleanField(default=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

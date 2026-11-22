@@ -3,13 +3,18 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Usuario } from '../../api/usuarios'
-import { useActualizarMiInformacion, useUsuarioActual } from '../../hooks/useUsuarioActual'
+import {
+  useActualizarMiInformacion,
+  useActualizarPreferenciasCorreo,
+  useUsuarioActual,
+} from '../../hooks/useUsuarioActual'
 import { InformacionUsuario } from './InformacionUsuario'
 
 vi.mock('../../hooks/useUsuarioActual')
 
 const useUsuarioActualMock = vi.mocked(useUsuarioActual)
 const useActualizarMiInformacionMock = vi.mocked(useActualizarMiInformacion)
+const useActualizarPreferenciasCorreoMock = vi.mocked(useActualizarPreferenciasCorreo)
 
 const USUARIO: Usuario = {
   id: 1,
@@ -21,6 +26,8 @@ const USUARIO: Usuario = {
   rol: 'operador',
   modulos: [],
   foto_usuario: null,
+  recibe_resumen_diario: true,
+  recibe_alertas_criticas: true,
 }
 
 const USUARIO_ADMIN: Usuario = { ...USUARIO, id: 2, username: 'admin1', rol: 'admin' }
@@ -32,6 +39,11 @@ function mockearHooks(actualizarMock: ReturnType<typeof vi.fn> = vi.fn(), usuari
   useActualizarMiInformacionMock.mockReturnValue(
     { mutateAsync: actualizarMock, isPending: false } as unknown as ReturnType<typeof useActualizarMiInformacion>,
   )
+  const preferenciasMock = vi.fn()
+  useActualizarPreferenciasCorreoMock.mockReturnValue(
+    { mutate: preferenciasMock, isPending: false } as unknown as ReturnType<typeof useActualizarPreferenciasCorreo>,
+  )
+  return { preferenciasMock }
 }
 
 function renderPagina() {
@@ -337,5 +349,29 @@ describe('InformacionUsuario — fotografía de perfil', () => {
 
     expect(imagenDelPerfil()).toHaveAttribute('src', 'http://servidor/fotos-usuarios/a.png')
     expect(screen.queryByText('Tienes cambios sin guardar')).not.toBeInTheDocument()
+  })
+
+  // 001, "Actualización: centro de notificaciones y avisos por correo".
+  it('el admin ve los dos interruptores de avisos por correo y cada uno se guarda al cambiarlo', () => {
+    const { preferenciasMock } = mockearHooks(vi.fn(), { ...USUARIO_ADMIN, recibe_alertas_criticas: false })
+    renderPagina()
+
+    const resumen = screen.getByRole('switch', { name: /Resumen diario/ })
+    const inmediatos = screen.getByRole('switch', { name: /Avisos inmediatos/ })
+    expect(resumen).toBeChecked()
+    expect(inmediatos).not.toBeChecked()
+
+    fireEvent.click(resumen)
+    expect(preferenciasMock).toHaveBeenLastCalledWith({ recibe_resumen_diario: false }, expect.anything())
+    fireEvent.click(inmediatos)
+    expect(preferenciasMock).toHaveBeenLastCalledWith({ recibe_alertas_criticas: true }, expect.anything())
+  })
+
+  it('el operador no ve los avisos por correo', () => {
+    mockearHooks()
+    renderPagina()
+
+    expect(screen.queryByRole('heading', { name: 'Avisos por correo' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   })
 })

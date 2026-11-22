@@ -39,11 +39,19 @@ def bloquear_inventario_materia_prima(sucursal, materia_prima):
 def registrar_movimiento_inventario(*, sucursal, tipo_item, item_id, tipo_movimiento, cantidad, motivo,
                                      referencia_id, stock_resultante, usuario, fecha=None):
     # `fecha` solo la pasa la carga inicial de datos (022); desde la app se omite.
-    return MovimientoInventario.objects.create(
+    movimiento = MovimientoInventario.objects.create(
         sucursal=sucursal, tipo_item=tipo_item, item_id=item_id, tipo_movimiento=tipo_movimiento,
         cantidad=cantidad, motivo=motivo, referencia_id=referencia_id, stock_resultante=stock_resultante,
         usuario=usuario, **({'fecha': fecha} if fecha else {}),
     )
+    # Aviso inmediato a los admins si el stock se agotó (`001`, "Actualización:
+    # centro de notificaciones…"). Sale solo al confirmarse la transacción; la
+    # carga inicial de datos (con `fecha`) no avisa.
+    if stock_resultante == 0 and fecha is None:
+        from apps.notificaciones.correo import avisar_stock_agotado
+
+        avisar_stock_agotado(sucursal.pk, tipo_item, item_id)
+    return movimiento
 
 
 def _nombre_item(tipo_item, item):

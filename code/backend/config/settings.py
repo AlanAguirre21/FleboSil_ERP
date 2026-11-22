@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     'apps.facturacion',
     'apps.contabilidad',
     'apps.respaldos',
+    'apps.notificaciones',
 ]
 
 MIDDLEWARE = [
@@ -242,6 +243,11 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-reply@notificaciones.flebosil.com')
+
+# Dirección pública del frontend, para los enlaces de los avisos por correo
+# (`001`, "Actualización: centro de notificaciones…"). En producción,
+# `https://erp.flebosil.com`.
+URL_FRONTEND = os.environ.get('URL_FRONTEND', 'http://localhost:5173')
 
 
 # Password validation

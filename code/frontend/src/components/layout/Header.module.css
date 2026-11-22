@@ -87,42 +87,61 @@
 }
 
 .dropdownSection {
-  @apply m-0 px-4 py-2 text-[0.68rem] font-base font-semibold uppercase tracking-[0.14em] text-texto-suave bg-fondo border-b border-borde;
+  @apply flex items-center justify-between m-0 px-4 py-2 text-[0.68rem] font-base font-semibold uppercase tracking-[0.14em] text-texto-suave bg-fondo border-b border-borde;
 }
 
-.alertList,
-.requestList {
-  @apply list-none m-0 p-0 max-h-[260px] overflow-y-auto;
+/* Cantidad de la sección, como píldora junto a su título. */
+.sectionCount {
+  @apply min-w-5 px-1.5 py-0.5 rounded-pildora bg-superficie border border-borde text-center text-[0.7rem] tracking-normal tabular-nums text-texto;
 }
 
-/* Cada alerta lleva un acento lateral de advertencia. */
-.alertList li {
-  @apply flex flex-col gap-0.5 px-4 py-2.5 text-[0.85rem] border-b border-borde border-l-[3px] border-l-advertencia;
+/* Panel de la campana: más ancho que el menú de usuario y con desplazamiento
+   propio cuando hay varias secciones. */
+.notificationsPanel {
+  @apply w-[min(360px,calc(100vw-24px))] max-h-[min(70vh,540px)] overflow-y-auto;
 }
 
-.alertList li span {
-  @apply text-xs text-texto-suave;
+.notificationGroup {
+  @apply border-b border-borde last:border-b-0;
 }
 
-.requestList li {
+.notificationList {
+  @apply list-none m-0 p-0;
+}
+
+.notificationList li {
   @apply border-b border-borde;
 }
 
-/* Cada solicitud pendiente enlaza a la pestaña "Nóminas" de RRHH. */
-.requestLink {
-  @apply flex flex-col gap-0.5 px-4 py-2.5 text-[0.85rem] text-texto no-underline transition-colors;
+/* Cada elemento enlaza a su detalle; los que requieren acción llevan un acento
+   lateral de advertencia. */
+.notificationLink {
+  @apply flex flex-col items-start gap-0.5 px-4 py-2.5 text-[0.85rem] text-texto no-underline border-l-[3px] border-l-transparent transition-colors;
 }
 
-.requestLink:hover,
-.requestLink:focus-visible {
+.notificationLink:hover,
+.notificationLink:focus-visible {
   @apply bg-fondo;
 }
 
-.requestLink span {
+.notificationLink span {
   @apply text-xs text-texto-suave;
 }
 
-/* "Ver nóminas", al pie de las solicitudes. */
+.notificationLink .status {
+  @apply mt-1;
+}
+
+.notificationUrgent {
+  @apply border-l-advertencia;
+}
+
+/* Sin pendientes: mensaje de "todo al día" en el tono de éxito. */
+.allClear {
+  @apply m-0 px-4 py-5 text-center text-[0.9rem] font-semibold text-exito;
+}
+
+/* "Ver todas", al pie de cada sección. */
 .dropdownFooter {
   @apply text-[0.85rem] font-semibold text-primario;
 }

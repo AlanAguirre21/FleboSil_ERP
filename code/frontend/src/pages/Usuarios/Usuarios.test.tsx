@@ -120,6 +120,38 @@ describe('Usuarios', () => {
     expect(screen.getByText('luis')).toBeInTheDocument()
   })
 
+  it('"Mostrar inactivos" es un interruptor accesible', () => {
+    mockearHooks()
+
+    renderUsuarios()
+    const interruptor = screen.getByRole('switch', { name: /mostrar inactivos/i })
+    expect(interruptor).not.toBeChecked()
+
+    fireEvent.click(interruptor)
+    expect(interruptor).toBeChecked()
+  })
+
+  it('filtra por usuarios vinculados o no a un empleado, y "Limpiar filtros" lo quita', () => {
+    mockearHooks()
+
+    renderUsuarios()
+    fireEvent.click(screen.getByRole('switch', { name: /mostrar inactivos/i }))
+    const filtro = screen.getByRole('combobox', { name: 'Empleado' })
+
+    fireEvent.change(filtro, { target: { value: 'vinculados' } })
+    expect(screen.getByText('ana')).toBeInTheDocument()
+    expect(screen.queryByText('luis')).not.toBeInTheDocument()
+
+    fireEvent.change(filtro, { target: { value: 'sin_vincular' } })
+    expect(screen.getByText('luis')).toBeInTheDocument()
+    expect(screen.queryByText('ana')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /limpiar filtros/i }))
+    expect(filtro).toHaveValue('')
+    expect(screen.getByText('ana')).toBeInTheDocument()
+    expect(screen.getByText('luis')).toBeInTheDocument()
+  })
+
   it('el selector de empleado del alta no lista empleados ya vinculados a otro usuario', () => {
     mockearHooks()
 

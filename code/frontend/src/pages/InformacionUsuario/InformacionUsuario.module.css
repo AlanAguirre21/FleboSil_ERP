@@ -58,3 +58,20 @@
 .saveActions {
   @apply flex items-center gap-4 flex-wrap ml-auto;
 }
+
+/* Avisos por correo (001): cada opción con su explicación y un interruptor. */
+.notificationOptions {
+  @apply flex flex-col divide-y divide-borde;
+}
+
+.notificationOption {
+  @apply flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0 cursor-pointer;
+}
+
+.notificationText {
+  @apply flex flex-col gap-0.5 min-w-0;
+}
+
+.notificationTitle {
+  @apply text-[0.95rem] font-semibold text-texto;
+}

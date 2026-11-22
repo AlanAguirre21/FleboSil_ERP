@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.configuracion_fiscal.models import SerieFolio
+from apps.notificaciones.correo import avisar_timbrado_fallido
 from apps.respaldos.facturas import respaldar_factura
 from apps.ventas.models import Venta
 from core.permissions import es_admin
@@ -124,6 +125,7 @@ class FacturaViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
             factura.estado = Factura.ESTADO_ERROR
             factura.mensaje_error = respuesta_pac.get('error') or 'El PAC rechazó el timbrado.'
             factura.save()
+            avisar_timbrado_fallido(factura.id)
             return Response(self.get_serializer(factura).data, status=status_code)
 
         with transaction.atomic():

@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom'
 import { BotonPrimario } from '../../components/common/BotonPrimario'
 import { Icono } from '../../components/common/Icono'
 import { Modal } from '../../components/common/Modal'
+import { BarraListado, PieListado } from '../../components/common/Paginacion'
 import type { AlertaStock } from '../../api/inventario'
 import type { Sucursal, SucursalFormulario } from '../../api/sucursales'
 import { useAlertasStock } from '../../hooks/useAlertasStock'
+import { usePaginacion } from '../../hooks/usePaginacion'
 import {
   useCrearSucursal,
   useDesactivarSucursal,
@@ -15,6 +17,7 @@ import {
   useSucursales,
 } from '../../hooks/useSucursales'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
+import { normalizarBusqueda } from '../../utils/texto'
 import styles from './Sucursales.module.css'
 
 const SUCURSAL_VACIA: SucursalFormulario = {
@@ -76,6 +79,7 @@ export function Sucursales() {
   const [errorReactivar, setErrorReactivar] = useState('')
 
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todas')
+  const [busqueda, setBusqueda] = useState('')
 
   const esAdmin = usuario?.rol === 'admin'
 
@@ -102,12 +106,37 @@ export function Sucursales() {
     return { activas: activas.length, inactivas: lista.length - activas.length, conAlertas }
   }, [lista, alertasPorSucursal])
 
+  // Búsqueda por nombre, ubicación o teléfono, junto con el filtro de estado.
+  const termino = normalizarBusqueda(busqueda)
   const filtradas = lista.filter((s) => {
-    if (filtroEstado === 'activas') return s.activo
-    if (filtroEstado === 'inactivas') return !s.activo
-    return true
+    if (filtroEstado === 'activas' && !s.activo) return false
+    if (filtroEstado === 'inactivas' && s.activo) return false
+    return (
+      !termino ||
+      [s.nombre_sucursal, s.ubicacion_sucursal, s.telefono_sucursal].some((campo) =>
+        normalizarBusqueda(campo ?? '').includes(termino),
+      )
+    )
   })
-  const hayFiltros = filtroEstado !== 'todas'
+  const hayFiltros = filtroEstado !== 'todas' || Boolean(busqueda.trim())
+
+  // Mismos controles que el resto de listados: buscador, "Mostrar" y páginas.
+  // La pantalla filtra con su propia lógica; la paginación solo reparte.
+  const paginacion = usePaginacion(filtradas, () => '', 10, {
+    valor: busqueda,
+    onCambiar: setBusqueda,
+    total: lista.length,
+  })
+
+  function cambiarFiltroEstado(valor: FiltroEstado) {
+    setFiltroEstado(valor)
+    paginacion.setPagina(1)
+  }
+
+  function limpiarFiltros() {
+    setFiltroEstado('todas')
+    paginacion.setBusqueda('')
+  }
 
   function abrirCrear() {
     setSucursalEnEdicion(null)
@@ -220,7 +249,7 @@ export function Sucursales() {
       <div className="filters">
         <label className="filterField">
           Estado
-          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as FiltroEstado)}>
+          <select value={filtroEstado} onChange={(e) => cambiarFiltroEstado(e.target.value as FiltroEstado)}>
             <option value="todas">Todas</option>
             <option value="activas">Activas</option>
             <option value="inactivas">Inactivas</option>
@@ -228,7 +257,7 @@ export function Sucursales() {
         </label>
 
         {hayFiltros && (
-          <button type="button" className="actionLink filtersEnd" onClick={() => setFiltroEstado('todas')}>
+          <button type="button" className="actionLink filtersEnd" onClick={limpiarFiltros}>
             Limpiar filtros
           </button>
         )}
@@ -237,20 +266,20 @@ export function Sucursales() {
       {isLoading ? (
         <p>Cargando sucursales…</p>
       ) : (
-        <>
-          <span className="pageHint">{`Mostrando ${filtradas.length} de ${lista.length}`}</span>
+        <div className="tableStack">
+          <BarraListado estado={paginacion} placeholderBusqueda="Buscar por nombre, ubicación o teléfono" />
 
           {filtradas.length === 0 ? (
             <div className="placeholderBox">
               <p className="emptyState">
                 {lista.length === 0
                   ? 'Todavía no hay sucursales registradas.'
-                  : 'Ninguna sucursal coincide con el filtro.'}
+                  : 'Ninguna sucursal coincide con la búsqueda o el filtro.'}
               </p>
             </div>
           ) : (
             <div className={styles.branchGrid}>
-              {filtradas.map((sucursal) => (
+              {paginacion.visibles.map((sucursal) => (
                 <TarjetaSucursal
                   key={sucursal.id}
                   sucursal={sucursal}
@@ -263,7 +292,9 @@ export function Sucursales() {
               ))}
             </div>
           )}
-        </>
+
+          <PieListado estado={paginacion} />
+        </div>
       )}
 
       <Modal

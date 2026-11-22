@@ -100,6 +100,7 @@ export function Usuarios() {
 }
 
 type FiltroRol = '' | UsuarioCuenta['rol_usuario']
+type FiltroEmpleado = '' | 'vinculados' | 'sin_vincular'
 
 function UsuariosContenido() {
   const { data: usuarios, isLoading } = useUsuarios()
@@ -113,6 +114,7 @@ function UsuariosContenido() {
   const [mostrarInactivos, setMostrarInactivos] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [rolFiltro, setRolFiltro] = useState<FiltroRol>('')
+  const [empleadoFiltro, setEmpleadoFiltro] = useState<FiltroEmpleado>('')
   const [formularioAbierto, setFormularioAbierto] = useState(false)
   const [enEdicion, setEnEdicion] = useState<UsuarioCuenta | null>(null)
   const [valores, setValores] = useState<ValoresFormulario>(FORMULARIO_VACIO)
@@ -237,20 +239,22 @@ function UsuariosContenido() {
   }
 
   // "Mostrar inactivos" es una preferencia de vista (por defecto ocultos,
-  // según `010`); la búsqueda y el rol son los filtros que se limpian.
+  // según `010`); la búsqueda, el rol y el empleado son los filtros que se limpian.
   const termino = normalizarBusqueda(busqueda)
   const lista = usuarios ?? []
   const usuariosVisibles = lista.filter(
     (u) =>
       (mostrarInactivos || u.activo) &&
       (!rolFiltro || u.rol_usuario === rolFiltro) &&
+      (!empleadoFiltro || (empleadoFiltro === 'vinculados') === (u.empleado !== null)) &&
       (!termino || [nombreCompleto(u), u.username, u.email].some((t) => normalizarBusqueda(t).includes(termino))),
   )
-  const hayFiltros = Boolean(busqueda.trim() || rolFiltro)
+  const hayFiltros = Boolean(busqueda.trim() || rolFiltro || empleadoFiltro)
 
   function limpiarFiltros() {
     setBusqueda('')
     setRolFiltro('')
+    setEmpleadoFiltro('')
   }
 
   function nombreEmpleado(id: number | null): string {
@@ -350,8 +354,23 @@ function UsuariosContenido() {
           </select>
         </label>
 
-        <label className="fieldCheckbox">
-          <input type="checkbox" checked={mostrarInactivos} onChange={(e) => setMostrarInactivos(e.target.checked)} />
+        <label className="filterField">
+          Empleado
+          <select value={empleadoFiltro} onChange={(e) => setEmpleadoFiltro(e.target.value as FiltroEmpleado)}>
+            <option value="">Todos</option>
+            <option value="vinculados">Vinculados a un empleado</option>
+            <option value="sin_vincular">Sin vincular</option>
+          </select>
+        </label>
+
+        <label className="filterToggle">
+          <input
+            type="checkbox"
+            role="switch"
+            className="switch"
+            checked={mostrarInactivos}
+            onChange={(e) => setMostrarInactivos(e.target.checked)}
+          />
           Mostrar inactivos
         </label>
 

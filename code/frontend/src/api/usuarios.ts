@@ -17,6 +17,14 @@ export interface Usuario {
   modulos: ModuloMenu[]
   // URL absoluta de la fotografía de perfil, o `null` (017 / 010).
   foto_usuario: string | null
+  // Avisos por correo; solo aplican al admin (001).
+  recibe_resumen_diario: boolean
+  recibe_alertas_criticas: boolean
+}
+
+export interface PreferenciasCorreo {
+  recibe_resumen_diario: boolean
+  recibe_alertas_criticas: boolean
 }
 
 // Cambio de fotografía en un formulario: archivo nuevo para subirla, `null`
@@ -85,6 +93,14 @@ export async function getUsuarioActual(): Promise<Usuario> {
 
 export async function actualizarMiInformacion(datos: InformacionUsuarioFormulario): Promise<Usuario> {
   const { data } = await apiClient.patch<Usuario>('/usuarios/me/', cuerpoConFoto(datos))
+  return data
+}
+
+// Avisos por correo del propio admin (001); el backend responde 403 al operador.
+export async function actualizarPreferenciasCorreo(
+  cambios: Partial<PreferenciasCorreo>,
+): Promise<PreferenciasCorreo> {
+  const { data } = await apiClient.patch<PreferenciasCorreo>('/usuarios/me/preferencias/', cambios)
   return data
 }
 

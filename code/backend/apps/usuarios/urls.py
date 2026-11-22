@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import MeView, UsuarioViewSet
+from .views import MeView, PreferenciasCorreoView, UsuarioViewSet
 
 router = DefaultRouter()
 router.register('', UsuarioViewSet, basename='usuario')
@@ -11,5 +11,6 @@ urlpatterns = [
     # de detalle del router (`<pk>/`) acepta cualquier valor no numérico,
     # Django resuelve URLs en orden y esta coincide primero.
     path('me/', MeView.as_view(), name='usuario-actual'),
+    path('me/preferencias/', PreferenciasCorreoView.as_view(), name='usuario-preferencias-correo'),
     *router.urls,
 ]

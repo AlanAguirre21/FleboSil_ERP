@@ -229,6 +229,9 @@ class UsuarioActualSerializer(serializers.Serializer):
     modulos = serializers.SerializerMethodField()
     # URL absoluta si la vista pasa `request` en el contexto; `null` sin foto.
     foto_usuario = serializers.ImageField(read_only=True)
+    # Avisos por correo (solo los usa el admin; `001`).
+    recibe_resumen_diario = serializers.BooleanField()
+    recibe_alertas_criticas = serializers.BooleanField()
 
     def get_nombre(self, usuario):
         return usuario.nombre_mostrado()
@@ -492,3 +495,13 @@ class CambiarContrasenaSerializer(serializers.Serializer):
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         }
+
+
+class PreferenciasCorreoSerializer(serializers.ModelSerializer):
+    """Avisos por correo del admin (`001`, "Actualización: centro de
+    notificaciones y avisos por correo"): resumen diario y avisos inmediatos,
+    cada uno activable por separado."""
+
+    class Meta:
+        model = Usuario
+        fields = ['recibe_resumen_diario', 'recibe_alertas_criticas']

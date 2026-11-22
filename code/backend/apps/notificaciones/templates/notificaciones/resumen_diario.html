@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resumen del día — FleboSil</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#fbf8f6; font-family:Arial, Helvetica, sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fbf8f6; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:16px; overflow:hidden;">
+            <tr>
+              <td align="center" style="padding:32px 32px 8px 32px;">
+                <img src="cid:logo_flebosil" alt="FleboSil" width="180" style="display:block; max-width:180px; height:auto; border:0;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 32px 8px 32px; text-align:center;">
+                <h1 style="margin:0; font-size:20px; line-height:1.3; color:#241f26; font-weight:600;">Resumen del día {{ fecha }}</h1>
+                <p style="margin:8px 0 0 0; font-size:14px; line-height:1.5; color:#6b6470;">
+                  {% if contador %}Tienes <strong style="color:#a6295f;">{{ contador }}</strong> pendiente{{ contador|pluralize }} que requiere{{ contador|pluralize:"n" }} acción.{% else %}Nada requiere acción hoy; estos son los pendientes en curso.{% endif %}
+                </p>
+              </td>
+            </tr>
+            {% for seccion in secciones %}
+            <tr>
+              <td style="padding:16px 32px 0 32px;">
+                <p style="margin:0 0 8px 0; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#6b6470;">
+                  {{ seccion.titulo }} · {{ seccion.total }}
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #ebe2e6; border-radius:12px;">
+                  {% for elemento in seccion.elementos %}
+                  <tr>
+                    <td style="padding:10px 14px;{% if not forloop.last %} border-bottom:1px solid #ebe2e6;{% endif %}{% if elemento.urgente %} border-left:3px solid #f9a825;{% endif %}">
+                      <a href="{{ elemento.url }}" style="font-size:14px; font-weight:600; color:#241f26; text-decoration:none;">{{ elemento.titulo }}</a>
+                      {% if elemento.etiqueta %}<span style="margin-left:6px; padding:2px 8px; font-size:11px; font-weight:600; color:{% if elemento.urgente %}#855600{% else %}#a6295f{% endif %}; background-color:{% if elemento.urgente %}#fdf1d0{% else %}#f3dce6{% endif %}; border-radius:9999px;">{{ elemento.etiqueta }}</span>{% endif %}
+                      <div style="margin-top:2px; font-size:12px; color:#6b6470;">{{ elemento.detalle }}</div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </table>
+                {% if seccion.total > seccion.elementos|length %}
+                <p style="margin:6px 0 0 0; font-size:12px;">
+                  <a href="{{ seccion.url }}" style="color:#a6295f; font-weight:600; text-decoration:none;">Ver las {{ seccion.total }}</a>
+                </p>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            <tr>
+              <td align="center" style="padding:28px 32px 32px 32px;">
+                <a href="{{ url_app }}" style="display:inline-block; padding:12px 24px; background-color:#a6295f; color:#ffffff; font-size:14px; font-weight:600; text-decoration:none; border-radius:9999px;">Abrir FleboSil</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px; background-color:#fbf8f6; text-align:center; border-top:1px solid #ebe2e6;">
+                <p style="margin:0 0 6px 0; font-size:12px; color:#9b93a0;">
+                  Recibes este correo por ser administrador. <a href="{{ url_preferencias }}" style="color:#a6295f;">Cambiar avisos por correo</a>
+                </p>
+                <p style="margin:0; font-size:12px; color:#9b93a0;">FleboSil · Serenidad para tus piernas</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

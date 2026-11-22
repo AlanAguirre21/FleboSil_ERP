@@ -225,24 +225,64 @@ describe('Sucursales — directorio de ubicaciones', () => {
     expect(screen.queryByText('Sin alertas')).not.toBeInTheDocument()
   })
 
-  it('filtra por estado, muestra "Mostrando N de M" y "Limpiar filtros" solo con filtro', () => {
+  it('filtra por estado, muestra el conteo del listado y "Limpiar filtros" solo con filtro', () => {
     mockearHooksSucursales()
     mockUsuarioActual({ data: { rol: 'operador' } })
 
     renderizar()
 
-    expect(screen.getByText('Mostrando 2 de 2')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–2 de 2')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /limpiar filtros/i })).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'inactivas' } })
 
     expect(screen.queryByRole('article', { name: 'Matriz' })).not.toBeInTheDocument()
     expect(tarjeta('Norte')).toBeInTheDocument()
-    expect(screen.getByText('Mostrando 1 de 2')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 2 en total)')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /limpiar filtros/i }))
 
-    expect(screen.getByText('Mostrando 2 de 2')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–2 de 2')).toBeInTheDocument()
+  })
+
+  it('el buscador filtra por nombre sin importar acentos ni mayúsculas, y "Limpiar filtros" lo borra', () => {
+    mockearHooksSucursales()
+    mockUsuarioActual({ data: { rol: 'operador' } })
+
+    renderizar()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar en la tabla' }), { target: { value: 'NORTE' } })
+
+    expect(tarjeta('Norte')).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Matriz' })).not.toBeInTheDocument()
+    expect(screen.getByText('Mostrando 1–1 de 1 (de 2 en total)')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar en la tabla' }), { target: { value: 'zzz' } })
+    expect(screen.getByText('Ninguna sucursal coincide con la búsqueda o el filtro.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /limpiar filtros/i }))
+    expect(screen.getByRole('searchbox', { name: 'Buscar en la tabla' })).toHaveValue('')
+    expect(screen.getByText('Mostrando 1–2 de 2')).toBeInTheDocument()
+  })
+
+  it('pagina las tarjetas con el selector "Mostrar"', () => {
+    mockearHooksSucursales()
+    const muchas = Array.from({ length: 12 }, (_, i) => ({
+      ...SUCURSALES[0], id: 100 + i, nombre_sucursal: `Sucursal ${String(i + 1).padStart(2, '0')}`,
+    }))
+    useSucursalesMock.mockReturnValue({ data: muchas, isLoading: false } as unknown as ReturnType<typeof useSucursales>)
+    mockUsuarioActual({ data: { rol: 'operador' } })
+
+    renderizar()
+
+    expect(screen.getAllByRole('article')).toHaveLength(10)
+    expect(screen.getByText('Mostrando 1–10 de 12')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    expect(screen.getByText('Mostrando 11–12 de 12')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Filas por página'), { target: { value: 'todas' } })
+    expect(screen.getAllByRole('article')).toHaveLength(12)
   })
 
   it('distingue la lista vacía de un filtro sin coincidencias', () => {
@@ -255,7 +295,7 @@ describe('Sucursales — directorio de ubicaciones', () => {
     renderizar()
     fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'inactivas' } })
 
-    expect(screen.getByText('Ninguna sucursal coincide con el filtro.')).toBeInTheDocument()
+    expect(screen.getByText('Ninguna sucursal coincide con la búsqueda o el filtro.')).toBeInTheDocument()
   })
 
   it('"Ver inventario" aparece solo en sucursales activas y lleva a su inventario', () => {

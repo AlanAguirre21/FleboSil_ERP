@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/produccion/', include('apps.produccion.urls')),
     path('api/caja/', include('apps.caja.urls')),
     path('api/reportes/', include('apps.reportes.urls')),
+    path('api/notificaciones/', include('apps.notificaciones.urls')),
     path('api/configuracion-fiscal/', include('apps.configuracion_fiscal.urls')),
     path('api/facturacion/', include('apps.facturacion.urls')),
     path('api/contabilidad/', include('apps.contabilidad.urls')),

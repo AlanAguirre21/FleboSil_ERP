@@ -1,20 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { Notificaciones, SeccionNotificacion } from '../../api/notificaciones'
 import { useAuth } from '../../context/AuthContext'
-import { useAlertasStock } from '../../hooks/useAlertasStock'
-import {
-  useAprobarSolicitudNomina,
-  useRechazarSolicitudNomina,
-  useSolicitudesNominaPendientes,
-} from '../../hooks/useSolicitudesNomina'
+import { useNotificaciones } from '../../hooks/useNotificaciones'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
 import { Header } from './Header'
 
 vi.mock('../../hooks/useUsuarioActual')
-vi.mock('../../hooks/useAlertasStock')
-vi.mock('../../hooks/useSolicitudesNomina')
+vi.mock('../../hooks/useNotificaciones')
 vi.mock('../../context/AuthContext')
 
 // Los mocks solo necesitan el subconjunto de campos que Header realmente lee;
@@ -23,22 +18,60 @@ function mockUsuarioActual(data: unknown) {
   vi.mocked(useUsuarioActual).mockReturnValue(data as ReturnType<typeof useUsuarioActual>)
 }
 
-function mockAlertasStock(data: unknown) {
-  vi.mocked(useAlertasStock).mockReturnValue(data as ReturnType<typeof useAlertasStock>)
+function mockNotificaciones(data: Notificaciones | undefined, isLoading = false) {
+  vi.mocked(useNotificaciones).mockReturnValue({ data, isLoading } as unknown as ReturnType<typeof useNotificaciones>)
 }
 
-// Por defecto sin solicitudes pendientes — los tests que sí las necesitan
-// llaman esta misma función con datos propios antes de `renderHeader()`.
-function mockSolicitudesNomina(data: unknown = { data: [], isLoading: false }) {
-  vi.mocked(useSolicitudesNominaPendientes).mockReturnValue(
-    data as ReturnType<typeof useSolicitudesNominaPendientes>,
-  )
-  vi.mocked(useAprobarSolicitudNomina).mockReturnValue(
-    { mutate: vi.fn(), isPending: false } as unknown as ReturnType<typeof useAprobarSolicitudNomina>,
-  )
-  vi.mocked(useRechazarSolicitudNomina).mockReturnValue(
-    { mutate: vi.fn(), isPending: false } as unknown as ReturnType<typeof useRechazarSolicitudNomina>,
-  )
+const SECCION_STOCK: SeccionNotificacion = {
+  clave: 'stock',
+  titulo: 'Stock',
+  ruta: '/inventario',
+  total: 2,
+  requieren_accion: 2,
+  elementos: [
+    { titulo: 'Suero', detalle: 'Matriz · 1 de 5 mínimo', etiqueta: null, urgente: true, ruta: '/inventario' },
+    { titulo: 'Cloruro', detalle: 'Norte · 2 de 5 mínimo', etiqueta: null, urgente: true, ruta: '/inventario' },
+  ],
+}
+
+const SECCION_VENTAS: SeccionNotificacion = {
+  clave: 'ventas',
+  titulo: 'Ventas por entregar',
+  ruta: '/ventas',
+  total: 7,
+  requieren_accion: 1,
+  elementos: [
+    {
+      titulo: 'Venta #12', detalle: 'Clínica Norte · Entrega 18/11/2026', etiqueta: 'Vencida · hace 4 días',
+      urgente: true, ruta: '/ventas/12',
+    },
+    { titulo: 'Venta #15', detalle: 'Sin cliente · Sin fecha de entrega', etiqueta: null, urgente: false, ruta: '/ventas/15' },
+  ],
+}
+
+const SECCION_FACTURAS: SeccionNotificacion = {
+  clave: 'facturas',
+  titulo: 'Facturas por atender',
+  ruta: '/facturacion',
+  total: 1,
+  requieren_accion: 0,
+  elementos: [
+    { titulo: 'A-18', detalle: 'Hospital Santa Rosa', etiqueta: 'Por cobrar $700.00', urgente: false, ruta: '/facturacion/9' },
+  ],
+}
+
+const SECCION_NOMINAS: SeccionNotificacion = {
+  clave: 'nominas',
+  titulo: 'Nóminas',
+  ruta: '/rrhh?pestana=nominas',
+  total: 1,
+  requieren_accion: 1,
+  elementos: [
+    {
+      titulo: 'Laura Gómez', detalle: '01/01/2026 – 15/01/2026 · $4,500.00', etiqueta: null, urgente: true,
+      ruta: '/rrhh?pestana=nominas',
+    },
+  ],
 }
 
 function renderHeader() {
@@ -57,76 +90,99 @@ function renderHeader() {
   return { logoutMock }
 }
 
+const campana = () => screen.getByRole('button', { name: /^Notificaciones/ })
+
 describe('Header', () => {
-  // Sin solicitudes pendientes por defecto — los tests de nómina lo
-  // sobreescriben explícitamente antes de renderizar.
-  beforeEach(() => mockSolicitudesNomina())
+  beforeEach(() => {
+    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
+    mockNotificaciones({ contador: 0, secciones: [] })
+  })
 
   it('el logo enlaza al Dashboard', () => {
-    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({ data: [] })
-
     renderHeader()
 
     expect(screen.getByRole('link', { name: /FleboSil/i })).toHaveAttribute('href', '/dashboard')
   })
 
-  it('muestra el contador de notificaciones cuando hay alertas de stock', () => {
-    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({
-      data: [
-        { tipo: 'producto', nombre: 'Suero', sucursal: 'Matriz', stock_actual: 1, stock_minimo: 5 },
-        { tipo: 'materia_prima', nombre: 'Cloruro', sucursal: 'Matriz', stock_actual: 1, stock_minimo: 5 },
-      ],
-    })
+  // 001, "Actualización: centro de notificaciones…": el contador ya no suma
+  // todo lo listado, solo lo que requiere acción (lo calcula el backend).
+  it('el contador muestra solo lo que requiere acción', () => {
+    mockNotificaciones({ contador: 3, secciones: [SECCION_STOCK, SECCION_VENTAS] })
 
     renderHeader()
 
-    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(campana()).toHaveAccessibleName('Notificaciones: 3 requieren acción')
+    expect(within(campana()).getByText('3')).toBeInTheDocument()
   })
 
-  it('no muestra contador cuando no hay alertas', () => {
-    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({ data: [] })
+  it('por encima de 9 el contador muestra "9+"', () => {
+    mockNotificaciones({ contador: 14, secciones: [SECCION_STOCK] })
 
     renderHeader()
 
-    expect(screen.queryByText('0')).not.toBeInTheDocument()
+    expect(within(campana()).getByText('9+')).toBeInTheDocument()
   })
 
-  it('el dropdown lista nombre y sucursal de cada ítem en alerta', () => {
-    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({
-      data: [
-        { tipo: 'producto', nombre: 'Suero', sucursal: 'Matriz', stock_actual: 1, stock_minimo: 5 },
-        { tipo: 'materia_prima', nombre: 'Cloruro', sucursal: 'Norte', stock_actual: 1, stock_minimo: 5 },
-      ],
-    })
+  it('sin nada que requiera acción no muestra contador', () => {
+    mockNotificaciones({ contador: 0, secciones: [SECCION_FACTURAS] })
 
     renderHeader()
-    fireEvent.click(screen.getByRole('button', { name: /alertas de stock/i }))
 
-    expect(screen.getByText('Suero')).toBeInTheDocument()
-    expect(screen.getByText('Matriz')).toBeInTheDocument()
-    expect(screen.getByText('Cloruro')).toBeInTheDocument()
-    expect(screen.getByText('Norte')).toBeInTheDocument()
+    expect(campana()).toHaveAccessibleName('Notificaciones')
+    expect(within(campana()).queryByText('0')).not.toBeInTheDocument()
   })
 
-  it('muestra estado de carga en vez de afirmar que no hay alertas', () => {
-    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({ data: undefined, isLoading: true })
+  it('el desplegable agrupa por sección, con su cantidad y "Ver todas"', () => {
+    mockNotificaciones({ contador: 3, secciones: [SECCION_STOCK, SECCION_VENTAS, SECCION_FACTURAS] })
 
     renderHeader()
-    fireEvent.click(screen.getByRole('button', { name: /alertas de stock/i }))
+    fireEvent.click(campana())
 
-    expect(screen.getByText(/cargando alertas/i)).toBeInTheDocument()
-    expect(screen.queryByText(/sin alertas de stock/i)).not.toBeInTheDocument()
+    const ventas = screen.getByRole('region', { name: 'Ventas por entregar' })
+    expect(within(ventas).getByText('7')).toBeInTheDocument()
+    const vencida = within(ventas).getByRole('link', { name: /Venta #12/ })
+    expect(vencida).toHaveAttribute('href', '/ventas/12')
+    expect(vencida).toHaveTextContent('Vencida · hace 4 días')
+    expect(within(ventas).getByRole('link', { name: 'Ver todas: Ventas por entregar' })).toHaveAttribute('href', '/ventas')
+
+    const stock = screen.getByRole('region', { name: 'Stock' })
+    expect(within(stock).getByText('Suero')).toBeInTheDocument()
+    expect(within(stock).getByText('Matriz · 1 de 5 mínimo')).toBeInTheDocument()
+
+    const facturas = screen.getByRole('region', { name: 'Facturas por atender' })
+    expect(within(facturas).getByRole('link', { name: /A-18/ })).toHaveTextContent('Por cobrar $700.00')
+  })
+
+  it('las nóminas pendientes enlazan a la pestaña Nóminas de RRHH', () => {
+    mockNotificaciones({ contador: 1, secciones: [SECCION_NOMINAS] })
+
+    renderHeader()
+    fireEvent.click(campana())
+
+    const solicitud = screen.getByRole('link', { name: /laura gómez/i })
+    expect(solicitud).toHaveAttribute('href', '/rrhh?pestana=nominas')
+    expect(solicitud).toHaveTextContent('01/01/2026 – 15/01/2026 · $4,500.00')
+    expect(screen.queryByRole('button', { name: 'Aprobar' })).not.toBeInTheDocument()
+  })
+
+  it('sin pendientes muestra "Todo al día"', () => {
+    renderHeader()
+    fireEvent.click(campana())
+
+    expect(screen.getByText('Todo al día')).toBeInTheDocument()
+  })
+
+  it('muestra estado de carga en vez de afirmar que todo está al día', () => {
+    mockNotificaciones(undefined, true)
+
+    renderHeader()
+    fireEvent.click(campana())
+
+    expect(screen.getByText(/cargando notificaciones/i)).toBeInTheDocument()
+    expect(screen.queryByText('Todo al día')).not.toBeInTheDocument()
   })
 
   it('cerrar sesión invalida la sesión activa', () => {
-    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({ data: [] })
-
     const { logoutMock } = renderHeader()
     fireEvent.click(screen.getByRole('button', { name: /ana/i }))
     fireEvent.click(screen.getByRole('button', { name: /cerrar sesión/i }))
@@ -134,49 +190,10 @@ describe('Header', () => {
     expect(logoutMock).toHaveBeenCalled()
   })
 
-  // Actualización "nómina con pago en caja" (008): aprobar paga desde Caja, así
-  // que la campana ya no aprueba ni rechaza; cada solicitud enlaza a "Nóminas".
-  it('admin ve las solicitudes de nómina pendientes como enlaces a la pestaña Nóminas', () => {
-    mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({ data: [] })
-    mockSolicitudesNomina({
-      data: [
-        {
-          id: 1, empleado: 3, empleado_nombre: 'Laura Gómez', periodo_inicio: '2026-01-01', periodo_fin: '2026-01-15',
-          monto: '4500.00', estado: 'pendiente', fecha_solicitud: '2026-01-16', fecha_resolucion: null,
-          resuelto_por: null,
-        },
-      ],
-    })
-
-    renderHeader()
-    fireEvent.click(screen.getByRole('button', { name: /alertas de stock/i }))
-
-    expect(screen.getByText('1')).toBeInTheDocument()
-    expect(screen.getByText('Solicitudes de nómina')).toBeInTheDocument()
-    const solicitud = screen.getByRole('link', { name: /laura gómez/i })
-    expect(solicitud).toHaveAttribute('href', '/rrhh?pestana=nominas')
-    expect(solicitud).toHaveTextContent('01/01/2026 – 15/01/2026 · $4,500.00')
-    expect(screen.getByRole('link', { name: 'Ver nóminas' })).toHaveAttribute('href', '/rrhh?pestana=nominas')
-    expect(screen.queryByRole('button', { name: 'Aprobar' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument()
-  })
-
-  it('operador no ve la sección de solicitudes de nómina', () => {
-    mockUsuarioActual({ data: { nombre: 'Beto', rol: 'operador', modulos: [] } })
-    mockAlertasStock({ data: [] })
-
-    renderHeader()
-    fireEvent.click(screen.getByRole('button', { name: /alertas de stock/i }))
-
-    expect(screen.queryByText('Solicitudes de nómina')).not.toBeInTheDocument()
-  })
-
   it('el avatar del menú de usuario muestra la fotografía si la tiene', () => {
     mockUsuarioActual({
       data: { nombre: 'Ana', rol: 'admin', modulos: [], foto_usuario: 'http://servidor/fotos-usuarios/a.png' },
     })
-    mockAlertasStock({ data: [] })
 
     renderHeader()
 
@@ -185,7 +202,6 @@ describe('Header', () => {
 
   it('sin fotografía, el avatar del menú de usuario muestra las iniciales', () => {
     mockUsuarioActual({ data: { nombre: 'Ana Torres', rol: 'admin', modulos: [], foto_usuario: null } })
-    mockAlertasStock({ data: [] })
 
     renderHeader()
 
@@ -194,19 +210,11 @@ describe('Header', () => {
 })
 
 describe('Header — cierre de los menús desplegables', () => {
-  const SOLICITUD = {
-    id: 1, empleado: 3, empleado_nombre: 'Laura Gómez', periodo_inicio: '2026-01-01', periodo_fin: '2026-01-15',
-    monto: '4500.00', estado: 'pendiente', fecha_solicitud: '2026-01-16', fecha_resolucion: null,
-    resuelto_por: null,
-  }
-
   beforeEach(() => {
-    mockSolicitudesNomina()
     mockUsuarioActual({ data: { nombre: 'Ana', rol: 'admin', modulos: [] } })
-    mockAlertasStock({ data: [] })
+    mockNotificaciones({ contador: 1, secciones: [SECCION_STOCK, SECCION_NOMINAS] })
   })
 
-  const campana = () => screen.getByRole('button', { name: /alertas de stock/i })
   const botonUsuario = () => screen.getByRole('button', { name: /ana/i })
 
   it('un clic fuera cierra el desplegable abierto', () => {
@@ -224,7 +232,7 @@ describe('Header — cierre de los menús desplegables', () => {
     renderHeader()
     fireEvent.click(campana())
 
-    fireEvent.pointerDown(screen.getByText('Stock bajo el mínimo'))
+    fireEvent.pointerDown(screen.getByText('Stock', { selector: 'span' }))
 
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
@@ -268,8 +276,7 @@ describe('Header — cierre de los menús desplegables', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('seguir el enlace de una solicitud de nómina cierra las notificaciones', () => {
-    mockSolicitudesNomina({ data: [SOLICITUD], isLoading: false })
+  it('seguir el enlace de una notificación cierra el desplegable', () => {
     renderHeader()
     fireEvent.click(campana())
 
@@ -289,4 +296,3 @@ describe('Header — cierre de los menús desplegables', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 })
-

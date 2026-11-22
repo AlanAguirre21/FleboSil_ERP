@@ -294,6 +294,35 @@
     @apply text-primario;
   }
 
+  /* --- Interruptores ---------------------------------------------------- */
+
+  /* Interruptor tipo píldora sobre un checkbox nativo con `role="switch"`
+     (sigue siendo accesible por teclado y lectores de pantalla). Encendido
+     en el primario de la marca. */
+  .switch {
+    @apply relative shrink-0 w-11 h-6 m-0 appearance-none rounded-pildora bg-borde cursor-pointer transition-colors;
+  }
+
+  .switch::before {
+    @apply content-[''] absolute top-0.5 left-0.5 w-5 h-5 rounded-pildora bg-superficie shadow-suave transition-transform;
+  }
+
+  .switch:checked {
+    @apply bg-primario;
+  }
+
+  .switch:checked::before {
+    @apply translate-x-5;
+  }
+
+  .switch:focus-visible {
+    @apply outline-none shadow-foco;
+  }
+
+  .switch:disabled {
+    @apply opacity-60 cursor-wait;
+  }
+
   /* --- Filtros ----------------------------------------------------------- */
 
   /* Barra de filtros de un listado, sobre su propia superficie. */
@@ -308,6 +337,12 @@
   .filterField select,
   .filterField input {
     @apply min-w-[160px];
+  }
+
+  /* Interruptor de vista dentro de la barra de filtros (ej. "Mostrar
+     inactivos"): a la altura de los selectores, con la etiqueta a la derecha. */
+  .filterToggle {
+    @apply flex items-center gap-2.5 min-h-[38px] text-[0.85rem] font-medium text-texto-suave cursor-pointer select-none;
   }
 
   /* Empuja un elemento de la barra de filtros al extremo derecho. */

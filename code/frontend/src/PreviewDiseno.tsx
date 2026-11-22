@@ -17,6 +17,8 @@ const USUARIO_PREVIEW: Usuario = {
   nombre: 'Juan Pérez López',
   rol: 'operador',
   foto_usuario: null,
+  recibe_resumen_diario: true,
+  recibe_alertas_criticas: true,
   modulos: [
     { slug: 'ventas', nombre: 'Ventas', ruta: '/ventas' },
     { slug: 'compras', nombre: 'Compras', ruta: '/compras' },

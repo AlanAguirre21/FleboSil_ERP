@@ -15,6 +15,7 @@ from .serializers import (
     CambiarContrasenaSerializer,
     LoginSerializer,
     LogoutSerializer,
+    PreferenciasCorreoSerializer,
     RegistroAccesoSerializer,
     SolicitarRecuperacionSerializer,
     UsuarioActualSerializer,
@@ -51,6 +52,23 @@ class MeView(RetrieveAPIView):
         serializer.save()
         # `request` en el contexto para devolver la URL absoluta de la foto.
         return Response(UsuarioActualSerializer(usuario, context={'request': request}).data)
+
+
+class PreferenciasCorreoView(GenericAPIView):
+    """PATCH /api/usuarios/me/preferencias/ — avisos por correo del propio
+    admin (`001`, "Actualización: centro de notificaciones y avisos por
+    correo"). Solo admin: el operador no recibe estos correos. Siempre edita
+    a `request.user`.
+    """
+
+    serializer_class = PreferenciasCorreoSerializer
+    permission_classes = [EsAdmin]
+
+    def patch(self, request):
+        serializer = self.get_serializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class LoginView(GenericAPIView):

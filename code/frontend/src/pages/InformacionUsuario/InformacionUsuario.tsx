@@ -10,9 +10,14 @@ import {
   ETIQUETAS_ROL,
   type CambioFoto,
   type InformacionUsuarioFormulario,
+  type PreferenciasCorreo,
   type Usuario,
 } from '../../api/usuarios'
-import { useActualizarMiInformacion, useUsuarioActual } from '../../hooks/useUsuarioActual'
+import {
+  useActualizarMiInformacion,
+  useActualizarPreferenciasCorreo,
+  useUsuarioActual,
+} from '../../hooks/useUsuarioActual'
 import styles from './InformacionUsuario.module.css'
 
 interface ErrorGuardarInformacion {
@@ -312,6 +317,8 @@ export function InformacionUsuario() {
               </div>
             </div>
           </form>
+
+          {esAdmin && <AvisosCorreo usuario={usuario} />}
         </>
       )}
 
@@ -350,5 +357,68 @@ function FilaAjustes({ titulo, descripcion, children }: { titulo: string; descri
       </div>
       <div className="card">{children}</div>
     </section>
+  )
+}
+
+const OPCIONES_AVISOS: { campo: keyof PreferenciasCorreo; etiqueta: string; ayuda: string }[] = [
+  {
+    campo: 'recibe_resumen_diario',
+    etiqueta: 'Resumen diario',
+    ayuda: 'Todos los pendientes de la campana, cada día a las 20:00.',
+  },
+  {
+    campo: 'recibe_alertas_criticas',
+    etiqueta: 'Avisos inmediatos',
+    ayuda: 'Al momento: un producto o materia prima agotados y una factura que falla al timbrar.',
+  },
+]
+
+// Avisos por correo del admin (001, "Actualización: centro de notificaciones y
+// avisos por correo"). Cada interruptor se guarda al cambiarlo, sin pasar por
+// "Guardar cambios": es la convención de los ajustes de notificaciones.
+function AvisosCorreo({ usuario }: { usuario: Usuario }) {
+  const actualizar = useActualizarPreferenciasCorreo()
+  const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null)
+
+  const cambiar = (campo: keyof PreferenciasCorreo, valor: boolean) => {
+    setMensaje(null)
+    actualizar.mutate(
+      { [campo]: valor },
+      {
+        onSuccess: () => setMensaje({ tipo: 'exito', texto: 'Preferencia guardada.' }),
+        onError: () => setMensaje({ tipo: 'error', texto: 'No se pudo guardar la preferencia. Inténtalo de nuevo.' }),
+      },
+    )
+  }
+
+  return (
+    <FilaAjustes
+      titulo="Avisos por correo"
+      descripcion={`Se envían a ${usuario.email}. Puedes desactivar cualquiera de los dos.`}
+    >
+      <div className={styles.notificationOptions}>
+        {OPCIONES_AVISOS.map((opcion) => (
+          <label key={opcion.campo} className={styles.notificationOption}>
+            <span className={styles.notificationText}>
+              <span className={styles.notificationTitle}>{opcion.etiqueta}</span>
+              <span className="fieldHint">{opcion.ayuda}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="switch"
+              checked={usuario[opcion.campo]}
+              disabled={actualizar.isPending}
+              onChange={(evento) => cambiar(opcion.campo, evento.target.checked)}
+            />
+          </label>
+        ))}
+      </div>
+      {mensaje && (
+        <p className={mensaje.tipo === 'exito' ? 'successMessage' : 'errorMessage'} role={mensaje.tipo === 'exito' ? 'status' : 'alert'}>
+          {mensaje.texto}
+        </p>
+      )}
+    </FilaAjustes>
   )
 }

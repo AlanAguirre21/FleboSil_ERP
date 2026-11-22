@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { actualizarMiInformacion, getUsuarioActual } from '../api/usuarios'
+import { actualizarMiInformacion, actualizarPreferenciasCorreo, getUsuarioActual } from '../api/usuarios'
 
 const CLAVE_USUARIO_ACTUAL = ['usuario-actual']
 
@@ -24,6 +24,14 @@ export function useActualizarMiInformacion() {
     // Invalida la caché (en vez de solo escribir la respuesta con
     // `setQueryData`) para que el Header y cualquier otra vista que lea
     // `useUsuarioActual` recarguen el dato desde el servidor de inmediato.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLAVE_USUARIO_ACTUAL }),
+  })
+}
+
+export function useActualizarPreferenciasCorreo() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: actualizarPreferenciasCorreo,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CLAVE_USUARIO_ACTUAL }),
   })
 }
