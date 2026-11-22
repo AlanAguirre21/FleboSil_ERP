@@ -20,13 +20,20 @@ interface GraficaLineaProps {
   datos: PuntoGrafica[]
   color: string
   formatoValor?: (valor: number) => string
+  etiquetaEjeY?: string
 }
 
 const formatoMonedaPorDefecto = (valor: number) =>
   `$${valor.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 // Gráfica de tendencia: línea con un relleno tenue debajo.
-export function GraficaLinea({ titulo, datos, color, formatoValor = formatoMonedaPorDefecto }: GraficaLineaProps) {
+export function GraficaLinea({
+  titulo,
+  datos,
+  color,
+  formatoValor = formatoMonedaPorDefecto,
+  etiquetaEjeY = 'Monto ($)',
+}: GraficaLineaProps) {
   return (
     <div className={styles.chart}>
       <h3 className={styles.chartTitle}>{titulo}</h3>
@@ -43,7 +50,7 @@ export function GraficaLinea({ titulo, datos, color, formatoValor = formatoMoned
                 tickLine={false}
                 tick={MARCA_EJE}
                 tickFormatter={formatearCompacto}
-                label={{ value: 'Monto ($)', angle: -90, position: 'insideLeft', ...ETIQUETA_EJE }}
+                label={{ value: etiquetaEjeY, angle: -90, position: 'insideLeft', ...ETIQUETA_EJE }}
               />
               <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(valor) => [formatoValor(Number(valor)), titulo]} />
               <Area

@@ -113,44 +113,44 @@ def test_ganancia_es_ventas_menos_compras_del_periodo(admin_client, sucursal, pr
 
 
 @pytest.mark.django_db
-def test_venta_cancelada_no_cuenta(api_client, sucursal, usuario):
+def test_venta_cancelada_no_cuenta(admin_client, sucursal, usuario):
     _crear_venta(sucursal, usuario, Decimal('300.00'), estado=Venta.ESTADO_CANCELADA)
 
-    response = api_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
     assert response.data['ventas_total'] == '0.00'
 
 
 @pytest.mark.django_db
-def test_venta_pendiente_si_cuenta(api_client, sucursal, usuario):
+def test_venta_pendiente_si_cuenta(admin_client, sucursal, usuario):
     _crear_venta(sucursal, usuario, Decimal('50.00'), estado=Venta.ESTADO_PENDIENTE)
 
-    response = api_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
     assert response.data['ventas_total'] == '50.00'
 
 
 @pytest.mark.django_db
-def test_compra_pendiente_cuenta_igual_que_recibida(api_client, sucursal, proveedor, usuario):
+def test_compra_pendiente_cuenta_igual_que_recibida(admin_client, sucursal, proveedor, usuario):
     _crear_compra(sucursal, proveedor, usuario, Decimal('80.00'), estado=Compra.ESTADO_PENDIENTE)
     _crear_compra(sucursal, proveedor, usuario, Decimal('40.00'), estado=Compra.ESTADO_RECIBIDA)
 
-    response = api_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
     assert response.data['compras_total'] == '120.00'
 
 
 @pytest.mark.django_db
-def test_compra_cancelada_no_cuenta(api_client, sucursal, proveedor, usuario):
+def test_compra_cancelada_no_cuenta(admin_client, sucursal, proveedor, usuario):
     _crear_compra(sucursal, proveedor, usuario, Decimal('80.00'), estado=Compra.ESTADO_CANCELADA)
 
-    response = api_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
     assert response.data['compras_total'] == '0.00'
 
 
 @pytest.mark.django_db
-def test_movimiento_fuera_del_periodo_seleccionado_no_cuenta(api_client, sucursal, usuario):
+def test_movimiento_fuera_del_periodo_seleccionado_no_cuenta(admin_client, sucursal, usuario):
     hace_dos_meses = timezone.now() - timedelta(days=60)
     _crear_venta(sucursal, usuario, Decimal('999.00'), fecha=hace_dos_meses)
 
-    response = api_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
     assert response.data['ventas_total'] == '0.00'
 
 

@@ -1,25 +1,25 @@
 import { useNavigate } from 'react-router-dom'
 
-import type { PeriodoDashboard, PuntoMonto } from '../../../../api/reportes'
+import type { ConsultaPeriodo, PuntoMonto } from '../../../../api/reportes'
 import { BotonPrimario } from '../../../../components/common/BotonPrimario'
-import { formatearEtiquetaFecha, formatearMoneda } from '../../compartido/formato'
+import { formatearMoneda, mapearSerie } from '../../compartido/formato'
 import { GraficaBarras } from '../../compartido/GraficaBarras'
 import { GraficaLinea } from '../../compartido/GraficaLinea'
+import { Variacion } from '../../compartido/Variacion'
 import { useResumenCompras } from '../../../../hooks/useResumenCompras'
 import { useResumenDashboard } from '../../../../hooks/useResumenDashboard'
 import styles from '../../compartido/SeccionOperacion.module.css'
 
 interface SeccionComprasProps {
-  periodo: PeriodoDashboard
+  consulta: ConsultaPeriodo
 }
 
-export function SeccionCompras({ periodo }: SeccionComprasProps) {
+export function SeccionCompras({ consulta }: SeccionComprasProps) {
   const navigate = useNavigate()
-  const { data: resumen, isLoading } = useResumenCompras(periodo)
-  const { data: resumenGeneral } = useResumenDashboard(periodo)
+  const { data: resumen, isLoading } = useResumenCompras(consulta)
+  const { data: resumenGeneral } = useResumenDashboard(consulta)
 
-  const mapear = (puntos: PuntoMonto[] = []) =>
-    puntos.map((punto) => ({ etiqueta: formatearEtiquetaFecha(punto.fecha, periodo), valor: Number(punto.monto) }))
+  const mapear = (puntos?: PuntoMonto[]) => mapearSerie(puntos, resumen?.granularidad, (punto) => Number(punto.monto))
 
   const datosConteo = (resumen?.conteo_estado ?? []).map((fila) => ({ etiqueta: fila.tipo, valor: fila.cantidad }))
 
@@ -33,6 +33,13 @@ export function SeccionCompras({ periodo }: SeccionComprasProps) {
             <span className={styles.indicatorAmount}>
               {resumenGeneral ? formatearMoneda(resumenGeneral.compras_total) : '…'}
             </span>
+            {/* Neutro: gastar más no es bueno ni malo por sí mismo. */}
+            <Variacion
+              valor={resumenGeneral?.variacion?.compras_total}
+              periodoAnterior={resumenGeneral?.periodo_anterior}
+              alineacion="derecha"
+              neutral
+            />
           </span>
           <BotonPrimario variante="secundario" onClick={() => navigate('/compras/nueva')}>
             Nueva compra

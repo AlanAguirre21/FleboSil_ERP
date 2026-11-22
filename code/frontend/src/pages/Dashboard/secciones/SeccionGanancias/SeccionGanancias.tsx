@@ -1,14 +1,16 @@
 import { useState } from 'react'
 
-import type { LimiteMovimientos, PeriodoDashboard } from '../../../../api/reportes'
-import { formatearEtiquetaFecha, formatearFechaMovimiento, formatearMoneda } from '../../compartido/formato'
+import type { ConsultaPeriodo, LimiteMovimientos } from '../../../../api/reportes'
+import { AyudaInfo } from '../../../../components/common/AyudaInfo'
+import { formatearFechaMovimiento, formatearMoneda, mapearSerie } from '../../compartido/formato'
 import { GraficaLinea } from '../../compartido/GraficaLinea'
+import { Variacion } from '../../compartido/Variacion'
 import { useMovimientosCajaDashboard } from '../../../../hooks/useMovimientosCajaDashboard'
 import { useResumenDashboard } from '../../../../hooks/useResumenDashboard'
 import styles from './SeccionGanancias.module.css'
 
 interface SeccionGananciasProps {
-  periodo: PeriodoDashboard
+  consulta: ConsultaPeriodo
 }
 
 const OPCIONES_LIMITE: { valor: LimiteMovimientos; etiqueta: string }[] = [
@@ -19,15 +21,14 @@ const OPCIONES_LIMITE: { valor: LimiteMovimientos; etiqueta: string }[] = [
 
 const ETIQUETA_TIPO: Record<string, string> = { ingreso: 'Ingreso', retiro: 'Retiro' }
 
-export function SeccionGanancias({ periodo }: SeccionGananciasProps) {
-  const { data: resumen, isLoading } = useResumenDashboard(periodo)
-  const [limite, setLimite] = useState<LimiteMovimientos>('5')
-  const { data: movimientos, isLoading: cargandoMovimientos } = useMovimientosCajaDashboard(periodo, limite)
+const AYUDA_GANANCIA = 'Ventas menos compras del periodo.'
 
-  const datosGrafica = (resumen?.serie ?? []).map((punto) => ({
-    etiqueta: formatearEtiquetaFecha(punto.fecha, periodo),
-    valor: Number(punto.ganancia),
-  }))
+export function SeccionGanancias({ consulta }: SeccionGananciasProps) {
+  const { data: resumen, isLoading } = useResumenDashboard(consulta)
+  const [limite, setLimite] = useState<LimiteMovimientos>('5')
+  const { data: movimientos, isLoading: cargandoMovimientos } = useMovimientosCajaDashboard(consulta, limite)
+
+  const datosGrafica = mapearSerie(resumen?.serie, resumen?.granularidad, (punto) => Number(punto.ganancia))
 
   const sinDatos = !isLoading && resumen && Number(resumen.ventas_total) === 0 && Number(resumen.compras_total) === 0
 
@@ -42,8 +43,12 @@ export function SeccionGanancias({ periodo }: SeccionGananciasProps) {
               resumen && Number(resumen.ganancia) < 0 ? styles.profitNegative : styles.profitPositive
             }`}
           >
-            <span className={styles.profitLabel}>Ganancia del periodo</span>
+            <span className={styles.profitLabelRow}>
+              <span className={styles.profitLabel}>Ganancia del periodo</span>
+              <AyudaInfo texto={AYUDA_GANANCIA} etiqueta="Qué es la ganancia del periodo" />
+            </span>
             <span className={styles.profitAmount}>{isLoading || resumen?.ganancia === undefined ? '…' : formatearMoneda(resumen.ganancia)}</span>
+            <Variacion valor={resumen?.variacion?.ganancia} periodoAnterior={resumen?.periodo_anterior} />
           </div>
 
           {isLoading || !resumen ? (

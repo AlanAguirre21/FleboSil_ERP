@@ -21,21 +21,3 @@
 .cashBalanceAmount {
   @apply text-4xl font-titulo font-semibold text-texto tabular-nums;
 }
-
-/* Selector de periodo como control segmentado tipo píldora. */
-.periodTabs {
-  @apply flex items-center gap-1 p-1 bg-superficie border border-borde rounded-pildora shadow-suave;
-}
-
-.periodTab {
-  @apply px-4 sm:px-5 py-1.5 bg-transparent border-0 rounded-pildora text-[0.9rem] text-texto-suave cursor-pointer transition-colors;
-}
-
-.periodTab:hover {
-  @apply text-texto;
-}
-
-.periodTabActive,
-.periodTabActive:hover {
-  @apply bg-inicio text-superficie font-semibold;
-}

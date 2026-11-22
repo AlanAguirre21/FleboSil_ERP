@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getClientesTop, type OrdenTop, type PeriodoDashboard } from '../api/reportes'
+import { clavePeriodo, getClientesTop, type ConsultaPeriodo, type OrdenTop } from '../api/reportes'
 
-export function useClientesTop(periodo: PeriodoDashboard, orden: OrdenTop) {
+export function useClientesTop(consulta: ConsultaPeriodo, orden: OrdenTop) {
   return useQuery({
-    queryKey: ['clientes-top', periodo, orden],
-    queryFn: () => getClientesTop(periodo, orden),
+    queryKey: ['clientes-top', ...clavePeriodo(consulta), orden],
+    queryFn: () => getClientesTop(consulta, orden),
     staleTime: 30_000,
   })
 }

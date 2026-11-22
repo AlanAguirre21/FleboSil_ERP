@@ -1,25 +1,28 @@
 import { useNavigate } from 'react-router-dom'
 
-import type { PeriodoDashboard, PuntoMonto } from '../../../../api/reportes'
+import type { ConsultaPeriodo, PuntoMonto } from '../../../../api/reportes'
+import { AyudaInfo } from '../../../../components/common/AyudaInfo'
 import { BotonPrimario } from '../../../../components/common/BotonPrimario'
-import { formatearEtiquetaFecha, formatearMoneda } from '../../compartido/formato'
+import { formatearMoneda, mapearSerie } from '../../compartido/formato'
 import { GraficaBarras } from '../../compartido/GraficaBarras'
 import { GraficaLinea } from '../../compartido/GraficaLinea'
+import { Variacion } from '../../compartido/Variacion'
 import { useResumenDashboard } from '../../../../hooks/useResumenDashboard'
 import { useResumenVentas } from '../../../../hooks/useResumenVentas'
 import styles from '../../compartido/SeccionOperacion.module.css'
 
 interface SeccionVentasProps {
-  periodo: PeriodoDashboard
+  consulta: ConsultaPeriodo
 }
 
-export function SeccionVentas({ periodo }: SeccionVentasProps) {
-  const navigate = useNavigate()
-  const { data: resumen, isLoading } = useResumenVentas(periodo)
-  const { data: resumenGeneral } = useResumenDashboard(periodo)
+const AYUDA_GANANCIA_VENTAS = 'Total vendido en el periodo, incluido el envío.'
 
-  const mapear = (puntos: PuntoMonto[] = []) =>
-    puntos.map((punto) => ({ etiqueta: formatearEtiquetaFecha(punto.fecha, periodo), valor: Number(punto.monto) }))
+export function SeccionVentas({ consulta }: SeccionVentasProps) {
+  const navigate = useNavigate()
+  const { data: resumen, isLoading } = useResumenVentas(consulta)
+  const { data: resumenGeneral } = useResumenDashboard(consulta)
+
+  const mapear = (puntos?: PuntoMonto[]) => mapearSerie(puntos, resumen?.granularidad, (punto) => Number(punto.monto))
 
   const datosConteo = (resumen?.conteo_estado ?? []).map((fila) => ({ etiqueta: fila.tipo, valor: fila.cantidad }))
 
@@ -29,10 +32,38 @@ export function SeccionVentas({ periodo }: SeccionVentasProps) {
         <h2 className="sectionTitle">Resumen de ventas</h2>
         <div className="headerActions">
           <span className={styles.indicator}>
-            <span className={styles.indicatorLabel}>Ganancia de ventas</span>
+            <span className={styles.indicatorLabelRow}>
+              <span className={styles.indicatorLabel}>Ganancia de ventas</span>
+              <AyudaInfo texto={AYUDA_GANANCIA_VENTAS} etiqueta="Qué es la ganancia de ventas" alineacion="derecha" />
+            </span>
             <span className={styles.indicatorAmount}>
               {resumenGeneral ? formatearMoneda(resumenGeneral.ventas_total) : '…'}
             </span>
+            <Variacion
+              valor={resumenGeneral?.variacion?.ventas_total}
+              periodoAnterior={resumenGeneral?.periodo_anterior}
+              alineacion="derecha"
+            />
+          </span>
+          <span className={styles.indicator}>
+            <span className={styles.indicatorLabel}>Número de ventas</span>
+            <span className={styles.indicatorAmount}>{resumen ? resumen.numero_ventas : '…'}</span>
+            <Variacion
+              valor={resumen?.variacion?.numero_ventas}
+              periodoAnterior={resumen?.periodo_anterior}
+              alineacion="derecha"
+            />
+          </span>
+          <span className={styles.indicator}>
+            <span className={styles.indicatorLabel}>Ticket promedio</span>
+            <span className={styles.indicatorAmount}>
+              {!resumen ? '…' : resumen.ticket_promedio === null ? '—' : formatearMoneda(resumen.ticket_promedio)}
+            </span>
+            <Variacion
+              valor={resumen?.variacion?.ticket_promedio}
+              periodoAnterior={resumen?.periodo_anterior}
+              alineacion="derecha"
+            />
           </span>
           <BotonPrimario onClick={() => navigate('/ventas/nueva')}>Nueva venta</BotonPrimario>
         </div>

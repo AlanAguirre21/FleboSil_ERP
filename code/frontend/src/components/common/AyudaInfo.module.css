@@ -1,0 +1,32 @@
+@reference "../../index.css";
+
+.wrapper {
+  @apply relative inline-flex align-middle;
+}
+
+/* Icono circular pequeño, al tamaño de una etiqueta en mayúsculas; el área
+   de toque se amplía a 24 px con un pseudo-elemento invisible. */
+.trigger {
+  @apply relative inline-flex items-center justify-center w-4 h-4 p-0 border border-texto-suave rounded-pildora bg-transparent text-[0.65rem] font-base font-bold normal-case tracking-normal leading-none text-texto-suave cursor-pointer after:absolute after:-inset-1 after:content-[''];
+}
+
+.trigger:hover,
+.trigger:focus-visible,
+.trigger[aria-expanded='true'] {
+  @apply border-primario text-primario outline-none shadow-foco;
+}
+
+/* Oculto hasta que se abre con clic/teclado o el cursor pasa por el icono.
+   Fondo en el tono de texto de la marca y un filo en primario. */
+.tooltip {
+  @apply invisible opacity-0 absolute top-full left-0 z-20 mt-2 w-max max-w-[min(16rem,calc(100vw-2rem))] px-3 py-2 bg-texto text-superficie text-[0.8rem] font-base font-normal normal-case tracking-normal leading-snug text-left border-t-2 border-primario rounded-control shadow-marcada transition-opacity pointer-events-none;
+}
+
+.tooltipRight {
+  @apply left-auto right-0;
+}
+
+.wrapper:hover .tooltip,
+.tooltipOpen {
+  @apply visible opacity-100;
+}

@@ -46,7 +46,9 @@ class Produccion(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='producciones')
     cantidad_producida = models.DecimalField(max_digits=12, decimal_places=2)
     costo_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    fecha = models.DateTimeField(auto_now_add=True)
+    # `db_index=True`: el Dashboard (`016`, "Resumen de producción") filtra
+    # y agrega por rango de `fecha`, igual que con `Venta.fecha`.
+    fecha = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         verbose_name_plural = 'producciones'

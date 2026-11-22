@@ -38,8 +38,10 @@ def _cliente_api(usuario):
 
 
 @pytest.fixture
-def api(operador):
-    return _cliente_api(operador)
+def api(admin):
+    # Admin: el operador solo consulta "Día" (`016`, "Actualización: periodos
+    # ampliados…"); el admin ve también los registros creados por el operador.
+    return _cliente_api(admin)
 
 
 @pytest.fixture
@@ -182,8 +184,8 @@ def test_requiere_atencion_incluye_errores_antiguos(api, sucursal, operador, cli
 
 
 def test_disponible_para_ambos_roles_con_el_mismo_contenido(operador, admin):
-    datos_operador = _cliente_api(operador).get(URL, {'periodo': 'mes'})
-    datos_admin = _cliente_api(admin).get(URL, {'periodo': 'mes'})
+    datos_operador = _cliente_api(operador).get(URL, {'periodo': 'dia'})
+    datos_admin = _cliente_api(admin).get(URL, {'periodo': 'dia'})
 
     assert datos_operador.status_code == 200
     assert datos_admin.status_code == 200

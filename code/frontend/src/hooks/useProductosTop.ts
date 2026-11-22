@@ -1,11 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getProductosTop, type OrdenTop, type PeriodoDashboard } from '../api/reportes'
+import {
+  clavePeriodo,
+  getProductosTop,
+  type ConsultaPeriodo,
+  type CriterioTopProductos,
+  type OrdenTop,
+} from '../api/reportes'
 
-export function useProductosTop(periodo: PeriodoDashboard, orden: OrdenTop) {
+export function useProductosTop(consulta: ConsultaPeriodo, orden: OrdenTop, por: CriterioTopProductos = 'cantidad') {
   return useQuery({
-    queryKey: ['productos-top', periodo, orden],
-    queryFn: () => getProductosTop(periodo, orden),
+    queryKey: ['productos-top', ...clavePeriodo(consulta), orden, por],
+    queryFn: () => getProductosTop(consulta, orden, por),
     staleTime: 30_000,
   })
 }

@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getResumenCompras, type PeriodoDashboard } from '../api/reportes'
+import { clavePeriodo, getResumenCompras, type ConsultaPeriodo } from '../api/reportes'
 
-export function useResumenCompras(periodo: PeriodoDashboard) {
+export function useResumenCompras(consulta: ConsultaPeriodo) {
   return useQuery({
-    queryKey: ['resumen-compras', periodo],
-    queryFn: () => getResumenCompras(periodo),
+    queryKey: ['resumen-compras', ...clavePeriodo(consulta)],
+    queryFn: () => getResumenCompras(consulta),
     staleTime: 30_000,
   })
 }

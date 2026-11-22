@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import type { OrdenTop, PeriodoDashboard } from '../../../../api/reportes'
+import type { ConsultaPeriodo, OrdenTop } from '../../../../api/reportes'
 import { formatearMoneda } from '../../compartido/formato'
 import { GraficaBarras } from '../../compartido/GraficaBarras'
 import { useClientesTop } from '../../../../hooks/useClientesTop'
@@ -10,12 +10,12 @@ function formatearCompras(valor: number): string {
 }
 
 interface SeccionClientesProps {
-  periodo: PeriodoDashboard
+  consulta: ConsultaPeriodo
 }
 
-export function SeccionClientes({ periodo }: SeccionClientesProps) {
+export function SeccionClientes({ consulta }: SeccionClientesProps) {
   const [orden, setOrden] = useState<OrdenTop>('mas')
-  const { data: clientes, isLoading } = useClientesTop(periodo, orden)
+  const { data: clientes, isLoading } = useClientesTop(consulta, orden)
 
   // El admin recibe el monto comprado; el operador, el número de compras (sin importes).
   const porCompras = (clientes ?? []).some((cliente) => cliente.compras !== undefined)

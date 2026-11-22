@@ -14,6 +14,10 @@
   @apply flex flex-col gap-1 px-5 py-4 bg-fondo border-l-4 rounded-control;
 }
 
+.profitLabelRow {
+  @apply flex items-center gap-2;
+}
+
 .profitLabel {
   @apply text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-texto-suave;
 }

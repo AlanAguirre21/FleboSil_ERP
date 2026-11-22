@@ -1,0 +1,23 @@
+@reference "../../../index.css";
+
+/* Variación contra el periodo anterior, bajo la cifra de un indicador, con
+   el icono que indica contra qué fechas se compara. */
+.variationRow {
+  @apply inline-flex items-center gap-1.5;
+}
+
+.variation {
+  @apply text-[0.75rem] font-semibold leading-snug tabular-nums;
+}
+
+.variationUp {
+  @apply text-exito;
+}
+
+.variationDown {
+  @apply text-error;
+}
+
+.variationNeutral {
+  @apply text-texto-suave font-medium;
+}

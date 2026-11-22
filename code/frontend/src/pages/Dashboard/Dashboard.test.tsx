@@ -1,11 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import type {
   ResumenDashboard, ResumenVentas, ResumenCompras, ProductoTop, ClienteTop, MovimientoCajaReporte, ResumenFacturacion,
+  ResumenProduccion,
 } from '../../api/reportes'
-import { useResumenDashboard } from '../../hooks/useResumenDashboard'
+import { useResumenDashboard, useValidarConsultaPeriodo } from '../../hooks/useResumenDashboard'
+import { useResumenProduccion } from '../../hooks/useResumenProduccion'
 import { useResumenVentas } from '../../hooks/useResumenVentas'
 import { useResumenCompras } from '../../hooks/useResumenCompras'
 import { useProductosTop } from '../../hooks/useProductosTop'
@@ -29,6 +31,7 @@ vi.mock('../../hooks/useResumenCompras')
 vi.mock('../../hooks/useProductosTop')
 vi.mock('../../hooks/useClientesTop')
 vi.mock('../../hooks/useResumenFacturacion')
+vi.mock('../../hooks/useResumenProduccion')
 vi.mock('../../hooks/useMovimientosCajaDashboard')
 vi.mock('../../hooks/useMovimientosCaja')
 vi.mock('../../hooks/useUsuarioActual')
@@ -36,9 +39,13 @@ vi.mock('../../hooks/useUsuarioActual')
 function resumenBase(overrides: Partial<ResumenDashboard> = {}): ResumenDashboard {
   return {
     periodo: 'dia',
+    granularidad: 'hora',
     ventas_total: '500.00',
     compras_total: '200.00',
     ganancia: '300.00',
+    periodo_anterior: { inicio: '2026-08-24T00:00:00-06:00', fin: '2026-08-24T10:30:00-06:00' },
+    anterior: { ventas_total: '400.00', compras_total: '160.00', ganancia: '200.00' },
+    variacion: { ventas_total: '25.0', compras_total: '25.0', ganancia: '50.0' },
     serie: [
       { fecha: '2026-08-25T08:00:00-06:00', ganancia: '100.00' },
       { fecha: '2026-08-25T09:00:00-06:00', ganancia: '200.00' },
@@ -50,6 +57,12 @@ function resumenBase(overrides: Partial<ResumenDashboard> = {}): ResumenDashboar
 function resumenVentasBase(overrides: Partial<ResumenVentas> = {}): ResumenVentas {
   return {
     periodo: 'dia',
+    granularidad: 'hora',
+    numero_ventas: 7,
+    ticket_promedio: '71.43',
+    periodo_anterior: { inicio: '2026-08-24T00:00:00-06:00', fin: '2026-08-24T10:30:00-06:00' },
+    anterior: { numero_ventas: 5, ticket_promedio: '80.00' },
+    variacion: { numero_ventas: '40.0', ticket_promedio: '-10.7' },
     con_envio: [{ fecha: '2026-08-25T08:00:00-06:00', monto: '220.00' }],
     sin_envio: [{ fecha: '2026-08-25T08:00:00-06:00', monto: '200.00' }],
     envio: [{ fecha: '2026-08-25T08:00:00-06:00', monto: '20.00' }],
@@ -64,6 +77,7 @@ function resumenVentasBase(overrides: Partial<ResumenVentas> = {}): ResumenVenta
 function resumenComprasBase(overrides: Partial<ResumenCompras> = {}): ResumenCompras {
   return {
     periodo: 'dia',
+    granularidad: 'hora',
     todas: [{ fecha: '2026-08-25T08:00:00-06:00', monto: '300.00' }],
     productos: [{ fecha: '2026-08-25T08:00:00-06:00', monto: '200.00' }],
     insumos: [{ fecha: '2026-08-25T08:00:00-06:00', monto: '100.00' }],
@@ -84,6 +98,10 @@ const movimientosBase: MovimientoCajaReporte[] = [
 function resumenFacturacionBase(overrides: Partial<ResumenFacturacion> = {}): ResumenFacturacion {
   return {
     periodo: 'dia',
+    granularidad: 'hora',
+    periodo_anterior: { inicio: '2026-08-24T00:00:00-06:00', fin: '2026-08-24T10:30:00-06:00' },
+    anterior: { facturado_total: '1000.00' },
+    variacion: { facturado_total: '50.0' },
     facturado_total: '1500.00',
     facturas_emitidas: 2,
     por_cobrar_ppd: '700.00',
@@ -104,14 +122,31 @@ function resumenFacturacionBase(overrides: Partial<ResumenFacturacion> = {}): Re
   }
 }
 
+function resumenProduccionBase(overrides: Partial<ResumenProduccion> = {}): ResumenProduccion {
+  return {
+    periodo: 'dia',
+    granularidad: 'hora',
+    producciones: 3,
+    unidades_producidas: '18.00',
+    costo_total: '330.00',
+    serie: [{ fecha: '2026-08-25T08:00:00-06:00', unidades: '18.00' }],
+    top_productos: [{ producto: 'Medias de compresión', cantidad: '15.00' }],
+    ...overrides,
+  }
+}
+
 function mockearTodo({
   usuario = { nombre: 'Ana', rol: 'admin' as const },
   saldo = { saldo_actual: '1000.00', saldo_adicional: '0.00', saldo_total: '1000.00' },
   resumenFacturacion = resumenFacturacionBase(),
+  resumenProduccion = resumenProduccionBase(),
+  validarConsulta = vi.fn().mockResolvedValue(resumenBase()),
 }: {
   usuario?: { nombre: string; rol: 'admin' | 'operador' } | undefined
   saldo?: { saldo_actual: string; saldo_adicional: string; saldo_total: string }
   resumenFacturacion?: ResumenFacturacion
+  resumenProduccion?: ResumenProduccion
+  validarConsulta?: ReturnType<typeof vi.fn>
 } = {}) {
   vi.mocked(useResumenDashboard).mockReturnValue(
     { data: resumenBase(), isLoading: false } as unknown as ReturnType<typeof useResumenDashboard>,
@@ -140,6 +175,13 @@ function mockearTodo({
   vi.mocked(useResumenFacturacion).mockReturnValue(
     { data: resumenFacturacion, isLoading: false } as unknown as ReturnType<typeof useResumenFacturacion>,
   )
+  vi.mocked(useResumenProduccion).mockReturnValue(
+    { data: resumenProduccion, isLoading: false } as unknown as ReturnType<typeof useResumenProduccion>,
+  )
+  vi.mocked(useValidarConsultaPeriodo).mockReturnValue(
+    validarConsulta as unknown as ReturnType<typeof useValidarConsultaPeriodo>,
+  )
+  return { validarConsulta }
 }
 
 function renderDashboard() {
@@ -159,14 +201,13 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('heading', { name: 'Resumen FleboSil' })).not.toBeInTheDocument()
   })
 
-  it('muestra las 4 pestañas de periodo, incluyendo Año', () => {
+  // 016, "Actualización: periodos ampliados, comparación y producción": de 4 a 5 opciones.
+  it('el admin ve las 5 opciones de periodo', () => {
     mockearTodo()
     renderDashboard()
 
-    expect(screen.getByRole('tab', { name: 'Día' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Semana' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Mes' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Año' })).toBeInTheDocument()
+    const nombres = screen.getAllByRole('tab').map((pestaña) => pestaña.textContent)
+    expect(nombres).toEqual(['Día', 'Semana', 'Mes', 'Año', 'Personalizado'])
   })
 
   it('el rol operador solo ve la pestaña "Día", sin Semana/Mes/Año', () => {
@@ -177,6 +218,8 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('tab', { name: 'Semana' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Mes' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Año' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Personalizado' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(1)
   })
 
   it('cambiar de periodo recalcula los datos de las secciones sin recargar', () => {
@@ -185,9 +228,13 @@ describe('Dashboard', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Año' }))
 
-    expect(useResumenDashboard).toHaveBeenLastCalledWith('año')
-    expect(useResumenVentas).toHaveBeenLastCalledWith('año')
-    expect(useResumenCompras).toHaveBeenLastCalledWith('año')
+    expect(useResumenDashboard).toHaveBeenLastCalledWith({ periodo: 'año' })
+    expect(useResumenVentas).toHaveBeenLastCalledWith({ periodo: 'año' })
+    expect(useResumenCompras).toHaveBeenLastCalledWith({ periodo: 'año' })
+    expect(useResumenProduccion).toHaveBeenLastCalledWith({ periodo: 'año' })
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Semana' }))
+    expect(useResumenVentas).toHaveBeenLastCalledWith({ periodo: 'semana' })
   })
 
   it('muestra "Saldo actual de la caja" para el rol admin', () => {
@@ -205,13 +252,14 @@ describe('Dashboard', () => {
     expect(screen.queryByText('Saldo actual de la caja')).not.toBeInTheDocument()
   })
 
-  it('muestra las 6 secciones del panel', () => {
+  it('muestra las 7 secciones del panel', () => {
     mockearTodo()
     renderDashboard()
 
     expect(screen.getByRole('heading', { name: 'Ganancias del periodo' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Resumen de ventas' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Resumen de compras' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Resumen de producción' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Resumen de productos' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Resumen clientes' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Resumen facturación' })).toBeInTheDocument()
@@ -249,7 +297,7 @@ describe('Dashboard', () => {
     renderDashboard()
 
     fireEvent.click(screen.getByRole('button', { name: 'Menos vendidos' }))
-    expect(useProductosTop).toHaveBeenLastCalledWith('dia', 'menos')
+    expect(useProductosTop).toHaveBeenLastCalledWith({ periodo: 'dia' }, 'menos', 'cantidad')
   })
 
   it('el ranking de clientes alterna entre más y menos compras', () => {
@@ -257,7 +305,7 @@ describe('Dashboard', () => {
     renderDashboard()
 
     fireEvent.click(screen.getByRole('button', { name: 'Menos compras' }))
-    expect(useClientesTop).toHaveBeenLastCalledWith('dia', 'menos')
+    expect(useClientesTop).toHaveBeenLastCalledWith({ periodo: 'dia' }, 'menos')
   })
 
   it('el selector de movimientos financieros ofrece 5, 10 y todos', () => {
@@ -265,7 +313,7 @@ describe('Dashboard', () => {
     renderDashboard()
 
     fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
-    expect(useMovimientosCajaDashboard).toHaveBeenLastCalledWith('dia', 'todos')
+    expect(useMovimientosCajaDashboard).toHaveBeenLastCalledWith({ periodo: 'dia' }, 'todos')
   })
 
   it('la lista de movimientos financieros solo muestra fecha, tipo y descripción, nunca el monto', () => {
@@ -294,7 +342,7 @@ describe('Dashboard', () => {
     expect(recuadro('Por cobrar (PPD)')).toHaveTextContent('$700.00')
     expect(recuadro('Por cobrar (PPD)')).toHaveClass('statTileWarning')
     expect(recuadro('% de ventas facturadas')).toHaveTextContent('75.0 %')
-    expect(useResumenFacturacion).toHaveBeenLastCalledWith('dia')
+    expect(useResumenFacturacion).toHaveBeenLastCalledWith({ periodo: 'dia' })
   })
 
   it('sin ventas el % facturado muestra "—" y sin saldo PPD no se tiñe', () => {
@@ -378,5 +426,213 @@ describe('Dashboard', () => {
     mockearTodo({ usuario: { nombre: 'Ana', rol: 'admin' } })
     renderDashboard()
     expect(screen.queryByText('Cifras de tus propias ventas, compras y facturas.')).not.toBeInTheDocument()
+  })
+
+  // --- 016, "Actualización: periodos ampliados, comparación y producción" ---
+
+  it('"Personalizado" muestra el rango y solo recalcula al pulsar "Aplicar"', async () => {
+    const { validarConsulta } = mockearTodo()
+    renderDashboard()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Personalizado' }))
+    expect(screen.getByRole('tab', { name: 'Personalizado' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '2026-03-01' } })
+    fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '2026-03-15' } })
+    expect(useResumenVentas).toHaveBeenLastCalledWith({ periodo: 'dia' })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+    })
+
+    const rango = { periodo: 'personalizado', desde: '2026-03-01', hasta: '2026-03-15' }
+    expect(validarConsulta).toHaveBeenCalledWith(rango)
+    expect(useResumenVentas).toHaveBeenLastCalledWith(rango)
+    expect(useResumenProduccion).toHaveBeenLastCalledWith(rango)
+    expect(screen.getByText('Del 01/03/2026 al 15/03/2026')).toBeInTheDocument()
+  })
+
+  it('un rango rechazado por el backend muestra su mensaje y no recalcula el panel', async () => {
+    const error = { response: { status: 400, data: { desde: ['"Desde" no puede ser posterior a "Hasta".'] } } }
+    mockearTodo({ validarConsulta: vi.fn().mockRejectedValue(error) })
+    renderDashboard()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Personalizado' }))
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '2026-03-20' } })
+    fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '2026-03-15' } })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('"Desde" no puede ser posterior a "Hasta".')
+    expect(useResumenVentas).toHaveBeenLastCalledWith({ periodo: 'dia' })
+  })
+
+  it('muestra la variación contra el periodo anterior, con compras en tono neutro', () => {
+    mockearTodo()
+    renderDashboard()
+
+    const variacion = (etiqueta: string) =>
+      screen.getByText(etiqueta).closest('span:not([class*="LabelRow"])')?.parentElement?.querySelector('[data-tono]')
+
+    expect(screen.getByText('Ganancia del periodo').parentElement?.parentElement).toHaveTextContent(
+      '▲ 50.0 % vs. periodo anterior',
+    )
+    const tonos = Array.from(document.querySelectorAll('[data-tono]')).map((nodo) => [nodo.textContent, nodo.getAttribute('data-tono')])
+    expect(tonos).toContainEqual(['▲ 25.0 % vs. periodo anterior', 'neutro'])
+    expect(tonos).toContainEqual(['▲ 25.0 % vs. periodo anterior', 'sube'])
+    expect(tonos).toContainEqual(['▼ 10.7 % vs. periodo anterior', 'baja'])
+    expect(variacion('Gasto en compras')).toHaveAttribute('data-tono', 'neutro')
+    const facturado = screen.getByText('Facturado', { selector: '.statLabel' }).parentElement
+    expect(facturado).toHaveTextContent('▲ 50.0 % vs. periodo anterior')
+  })
+
+  it('sin base de comparación muestra "Sin datos del periodo anterior"', () => {
+    mockearTodo({
+      resumenFacturacion: resumenFacturacionBase({
+        anterior: { facturado_total: '0.00' },
+        variacion: { facturado_total: null },
+      }),
+    })
+    renderDashboard()
+
+    const facturado = screen.getByText('Facturado', { selector: '.statLabel' }).parentElement
+    expect(facturado).toHaveTextContent('Sin datos del periodo anterior')
+  })
+
+  it('el operador ve la comparación de sus cifras, nunca la de la ganancia', () => {
+    mockearTodo({ usuario: { nombre: 'Luis', rol: 'operador' } })
+    vi.mocked(useResumenDashboard).mockReturnValue({
+      data: {
+        periodo: 'dia',
+        ventas_total: '500.00',
+        compras_total: '200.00',
+        anterior: { ventas_total: '400.00', compras_total: '160.00' },
+        variacion: { ventas_total: '25.0', compras_total: '25.0' },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useResumenDashboard>)
+    renderDashboard()
+
+    expect(screen.queryByText('Ganancia del periodo')).not.toBeInTheDocument()
+    expect(screen.getAllByText('▲ 25.0 % vs. periodo anterior')).toHaveLength(2)
+  })
+
+  it('los íconos de ayuda explican "Ganancia del periodo" y "Ganancia de ventas" y se abren con clic', () => {
+    mockearTodo()
+    renderDashboard()
+
+    const ayudaGanancia = screen.getByRole('button', { name: 'Qué es la ganancia del periodo' })
+    expect(ayudaGanancia).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(ayudaGanancia)
+    expect(ayudaGanancia).toHaveAttribute('aria-expanded', 'true')
+    expect(ayudaGanancia).toHaveAccessibleDescription('Ventas menos compras del periodo.')
+    fireEvent.keyDown(ayudaGanancia, { key: 'Escape' })
+    expect(ayudaGanancia).toHaveAttribute('aria-expanded', 'false')
+
+    const ayudaVentas = screen.getByRole('button', { name: 'Qué es la ganancia de ventas' })
+    expect(ayudaVentas).toHaveAccessibleDescription('Total vendido en el periodo, incluido el envío.')
+  })
+
+  it('el icono junto al selector explica qué fechas abarca el periodo elegido', async () => {
+    mockearTodo()
+    renderDashboard()
+
+    const ayudaPeriodo = screen.getByRole('button', { name: 'Qué fechas abarca el periodo' })
+    expect(ayudaPeriodo).toHaveAccessibleDescription(/^Hoy \(\d{2}\/\d{2}\/\d{4}\), desde las 00:00 hasta ahora\.$/)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Mes' }))
+    expect(ayudaPeriodo).toHaveAccessibleDescription(/^Del 01\/\d{2}\/\d{4} a hoy\.$/)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Personalizado' }))
+    expect(ayudaPeriodo).toHaveAccessibleDescription('Elige las fechas y pulsa "Aplicar".')
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '2026-03-01' } })
+    fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '2026-03-15' } })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+    })
+    expect(ayudaPeriodo).toHaveAccessibleDescription('Del 01/03/2026 al 15/03/2026, ambos incluidos.')
+  })
+
+  it('el operador también tiene la ayuda del periodo "Día"', () => {
+    mockearTodo({ usuario: { nombre: 'Luis', rol: 'operador' } })
+    renderDashboard()
+
+    expect(screen.getByRole('button', { name: 'Qué fechas abarca el periodo' })).toHaveAccessibleDescription(/^Hoy /)
+  })
+
+  it('Resumen de ventas muestra el número de ventas y el ticket promedio', () => {
+    mockearTodo()
+    renderDashboard()
+
+    expect(screen.getByText('Número de ventas').parentElement).toHaveTextContent('7')
+    expect(screen.getByText('Número de ventas').parentElement).toHaveTextContent('▲ 40.0 % vs. periodo anterior')
+    expect(screen.getByText('Ticket promedio').parentElement).toHaveTextContent('$71.43')
+  })
+
+  it('sin ventas el ticket promedio muestra "—"', () => {
+    mockearTodo()
+    vi.mocked(useResumenVentas).mockReturnValue({
+      data: resumenVentasBase({
+        numero_ventas: 0,
+        ticket_promedio: null,
+        variacion: { numero_ventas: null, ticket_promedio: null },
+      }),
+      isLoading: false,
+    } as unknown as ReturnType<typeof useResumenVentas>)
+    renderDashboard()
+
+    expect(screen.getByText('Ticket promedio').parentElement).toHaveTextContent('—')
+    expect(screen.getByText('Ticket promedio').parentElement).toHaveTextContent('Sin datos del periodo anterior')
+  })
+
+  it('el admin puede ordenar el top de productos por importe', () => {
+    mockearTodo()
+    renderDashboard()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Importe' }))
+    expect(useProductosTop).toHaveBeenLastCalledWith({ periodo: 'dia' }, 'mas', 'importe')
+  })
+
+  it('el operador no ve el control "Unidades / Importe"', () => {
+    mockearTodo({ usuario: { nombre: 'Luis', rol: 'operador' } })
+    renderDashboard()
+
+    expect(screen.queryByRole('button', { name: 'Importe' })).not.toBeInTheDocument()
+    expect(useProductosTop).toHaveBeenLastCalledWith({ periodo: 'dia' }, 'mas', 'cantidad')
+  })
+
+  it('Resumen de producción muestra sus indicadores y lleva a Producción', () => {
+    mockearTodo()
+    renderDashboard()
+
+    expect(screen.getByText('Producciones').parentElement).toHaveTextContent('3')
+    expect(screen.getByText('Unidades producidas', { selector: 'span' }).parentElement).toHaveTextContent('18')
+    expect(screen.getByText('Costo de producción').parentElement).toHaveTextContent('$330.00')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ir a Producción' }))
+    expect(navigateMock).toHaveBeenCalledWith('/produccion')
+  })
+
+  it('el operador ve Resumen de producción sin el costo', () => {
+    const { costo_total: _sinCosto, ...sinCosto } = resumenProduccionBase()
+    void _sinCosto
+    mockearTodo({ usuario: { nombre: 'Luis', rol: 'operador' }, resumenProduccion: sinCosto })
+    renderDashboard()
+
+    expect(screen.getByRole('heading', { name: 'Resumen de producción' })).toBeInTheDocument()
+    expect(screen.queryByText('Costo de producción')).not.toBeInTheDocument()
+  })
+
+  it('cada variación tiene un icono que indica contra qué fechas se compara', () => {
+    mockearTodo()
+    renderDashboard()
+
+    // Ganancia, Ganancia de ventas, Número de ventas, Ticket promedio, Gasto en compras y Facturado.
+    const ayudas = screen.getAllByRole('button', { name: 'Con qué periodo se compara' })
+    expect(ayudas).toHaveLength(6)
+    const primera = ayudas[0] as HTMLElement
+    fireEvent.click(primera)
+    expect(primera).toHaveAttribute('aria-expanded', 'true')
+    expect(primera).toHaveAccessibleDescription('Comparado con el 24/08/2026, de 00:00 a 10:30.')
   })
 })

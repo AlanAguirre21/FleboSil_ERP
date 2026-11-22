@@ -1,0 +1,33 @@
+@reference "../../../index.css";
+
+.periodSelector {
+  @apply flex flex-col items-center gap-3 max-w-full;
+}
+
+/* Pestañas y, a su lado, el icono que explica qué fechas abarca el periodo. */
+.periodRow {
+  @apply flex items-center justify-center gap-2 max-w-full;
+}
+
+/* Selector de periodo como control segmentado tipo píldora; con cinco
+   opciones se reparte en varias filas en pantallas angostas. */
+.periodTabs {
+  @apply flex flex-wrap items-center justify-center gap-1 p-1 max-w-full bg-superficie border border-borde rounded-tarjeta md:rounded-pildora shadow-suave;
+}
+
+.periodTab {
+  @apply px-3 sm:px-4 py-1.5 bg-transparent border-0 rounded-pildora text-[0.9rem] text-texto-suave whitespace-nowrap cursor-pointer transition-colors;
+}
+
+.periodTab:hover {
+  @apply text-texto;
+}
+
+.periodTabActive,
+.periodTabActive:hover {
+  @apply bg-inicio text-superficie font-semibold;
+}
+
+.rangeForm {
+  @apply flex flex-wrap items-end justify-center gap-3;
+}

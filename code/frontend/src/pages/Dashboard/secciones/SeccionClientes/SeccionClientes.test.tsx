@@ -28,7 +28,7 @@ describe('SeccionClientes', () => {
   it('para el admin grafica el monto comprado', () => {
     mockearClientes([{ cliente: 'María Pérez', monto: '900.00' }])
 
-    render(<SeccionClientes periodo="mes" />)
+    render(<SeccionClientes consulta={{ periodo: 'mes' }} />)
 
     expect(screen.getByRole('list', { name: 'Monto ($)' })).toHaveTextContent('María Pérez: $900.00')
   })
@@ -40,7 +40,7 @@ describe('SeccionClientes', () => {
       { cliente: 'María Pérez', compras: 1 },
     ])
 
-    render(<SeccionClientes periodo="dia" />)
+    render(<SeccionClientes consulta={{ periodo: 'dia' }} />)
 
     const grafica = screen.getByRole('list', { name: 'Compras' })
     expect(grafica).toHaveTextContent('Luis Gómez: 2 compras')

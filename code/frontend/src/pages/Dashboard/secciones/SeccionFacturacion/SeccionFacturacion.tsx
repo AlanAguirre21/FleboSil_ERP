@@ -1,19 +1,20 @@
 import { Link } from 'react-router-dom'
 
 import { ETIQUETAS_ESTADO_FACTURA, type EstadoFactura } from '../../../../api/facturacion'
-import type { FacturaPorAtender, PeriodoDashboard, PuntoFacturacion } from '../../../../api/reportes'
+import type { ConsultaPeriodo, FacturaPorAtender, PuntoFacturacion } from '../../../../api/reportes'
 import { Tabla, type ColumnaTabla } from '../../../../components/common/Tabla'
 import { useResumenFacturacion } from '../../../../hooks/useResumenFacturacion'
-import { formatearEtiquetaFecha, formatearMoneda } from '../../compartido/formato'
+import { formatearMoneda, mapearSerie } from '../../compartido/formato'
 import { GraficaBarras } from '../../compartido/GraficaBarras'
 import { GraficaLinea } from '../../compartido/GraficaLinea'
 import styles from '../../compartido/SeccionOperacion.module.css'
+import { Variacion } from '../../compartido/Variacion'
 
 // Sección 6 del Dashboard — `016`, "Actualización: Resumen facturación con
 // datos". Mismo contenido para admin y operador.
 
 interface SeccionFacturacionProps {
-  periodo: PeriodoDashboard
+  consulta: ConsultaPeriodo
 }
 
 const CLASES_ESTADO: Record<EstadoFactura, string> = {
@@ -63,11 +64,11 @@ const COLUMNAS_ATENCION: ColumnaTabla<FacturaPorAtender>[] = [
   },
 ]
 
-export function SeccionFacturacion({ periodo }: SeccionFacturacionProps) {
-  const { data: resumen, isLoading } = useResumenFacturacion(periodo)
+export function SeccionFacturacion({ consulta }: SeccionFacturacionProps) {
+  const { data: resumen, isLoading } = useResumenFacturacion(consulta)
 
-  const mapear = (campo: 'total' | 'pue' | 'ppd', puntos: PuntoFacturacion[] = []) =>
-    puntos.map((punto) => ({ etiqueta: formatearEtiquetaFecha(punto.fecha, periodo), valor: Number(punto[campo]) }))
+  const mapear = (campo: 'total' | 'pue' | 'ppd', puntos?: PuntoFacturacion[]) =>
+    mapearSerie(puntos, resumen?.granularidad, (punto) => Number(punto[campo]))
 
   const datosConteo = (resumen?.conteo_estado ?? []).map((fila) => ({ etiqueta: fila.tipo, valor: fila.cantidad }))
   const porCobrar = resumen ? Number(resumen.por_cobrar_ppd) : 0
@@ -84,6 +85,7 @@ export function SeccionFacturacion({ periodo }: SeccionFacturacionProps) {
             <div className="statTile">
               <span className="statLabel">Facturado</span>
               <span className="statValue">{formatearMoneda(resumen.facturado_total)}</span>
+              <Variacion valor={resumen.variacion?.facturado_total} periodoAnterior={resumen.periodo_anterior} />
             </div>
             <div className="statTile">
               <span className="statLabel">Facturas emitidas</span>

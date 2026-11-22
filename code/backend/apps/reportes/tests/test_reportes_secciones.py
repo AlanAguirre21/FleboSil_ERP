@@ -93,8 +93,8 @@ def _crear_compra(sucursal, proveedor, usuario, total, estado=Compra.ESTADO_RECI
 # --- /api/reportes/resumen/ — periodo "año" -----------------------------
 
 @pytest.mark.django_db
-def test_periodo_anio_es_aceptado(api_client):
-    response = api_client.get('/api/reportes/resumen/', {'periodo': 'año'})
+def test_periodo_anio_es_aceptado(admin_client):
+    response = admin_client.get('/api/reportes/resumen/', {'periodo': 'año'})
     assert response.status_code == 200
     assert response.data['periodo'] == 'año'
 
@@ -125,10 +125,10 @@ def test_resumen_ventas_requiere_autenticacion():
 
 
 @pytest.mark.django_db
-def test_resumen_ventas_desglosa_envio(api_client, sucursal, usuario):
+def test_resumen_ventas_desglosa_envio(admin_client, sucursal, usuario):
     _crear_venta(sucursal, usuario, total=Decimal('220.00'), gasto_envio=Decimal('20.00'))
 
-    response = api_client.get('/api/reportes/ventas/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/ventas/', {'periodo': 'mes'})
 
     con_envio = sum(Decimal(p['monto']) for p in response.data['con_envio'])
     sin_envio = sum(Decimal(p['monto']) for p in response.data['sin_envio'])
@@ -139,21 +139,21 @@ def test_resumen_ventas_desglosa_envio(api_client, sucursal, usuario):
 
 
 @pytest.mark.django_db
-def test_resumen_ventas_excluye_canceladas(api_client, sucursal, usuario):
+def test_resumen_ventas_excluye_canceladas(admin_client, sucursal, usuario):
     _crear_venta(sucursal, usuario, total=Decimal('300.00'), estado=Venta.ESTADO_CANCELADA)
 
-    response = api_client.get('/api/reportes/ventas/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/ventas/', {'periodo': 'mes'})
 
     assert sum(Decimal(p['monto']) for p in response.data['con_envio']) == Decimal('0.00')
 
 
 @pytest.mark.django_db
-def test_resumen_ventas_conteo_por_estado(api_client, sucursal, usuario):
+def test_resumen_ventas_conteo_por_estado(admin_client, sucursal, usuario):
     _crear_venta(sucursal, usuario, total=Decimal('100.00'), estado=Venta.ESTADO_PENDIENTE)
     _crear_venta(sucursal, usuario, total=Decimal('100.00'), estado=Venta.ESTADO_ENTREGADA)
     _crear_venta(sucursal, usuario, total=Decimal('100.00'), estado=Venta.ESTADO_ENTREGADA)
 
-    response = api_client.get('/api/reportes/ventas/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/ventas/', {'periodo': 'mes'})
 
     conteo = {fila['tipo']: fila['cantidad'] for fila in response.data['conteo_estado']}
     assert conteo == {'Pendiente': 1, 'Entregada': 2}
@@ -169,7 +169,7 @@ def test_resumen_compras_requiere_autenticacion():
 
 
 @pytest.mark.django_db
-def test_resumen_compras_desglosa_productos_e_insumos(api_client, sucursal, proveedor, usuario, producto, materia_prima):
+def test_resumen_compras_desglosa_productos_e_insumos(admin_client, sucursal, proveedor, usuario, producto, materia_prima):
     compra = _crear_compra(sucursal, proveedor, usuario, total=Decimal('300.00'))
     DetalleCompraProducto.objects.create(
         compra=compra, producto=producto, cantidad=Decimal(2), costo_unitario=Decimal('100.00'),
@@ -180,7 +180,7 @@ def test_resumen_compras_desglosa_productos_e_insumos(api_client, sucursal, prov
         subtotal=Decimal('100.00'),
     )
 
-    response = api_client.get('/api/reportes/compras/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/compras/', {'periodo': 'mes'})
 
     assert sum(Decimal(p['monto']) for p in response.data['productos']) == Decimal('200.00')
     assert sum(Decimal(p['monto']) for p in response.data['insumos']) == Decimal('100.00')
@@ -189,7 +189,7 @@ def test_resumen_compras_desglosa_productos_e_insumos(api_client, sucursal, prov
 
 @pytest.mark.django_db
 def test_resumen_compras_incluye_pendientes_en_las_series_de_monto(
-    api_client, sucursal, proveedor, usuario, producto,
+    admin_client, sucursal, proveedor, usuario, producto,
 ):
     compra = _crear_compra(sucursal, proveedor, usuario, total=Decimal('200.00'), estado=Compra.ESTADO_PENDIENTE)
     DetalleCompraProducto.objects.create(
@@ -197,14 +197,14 @@ def test_resumen_compras_incluye_pendientes_en_las_series_de_monto(
         subtotal=Decimal('200.00'),
     )
 
-    response = api_client.get('/api/reportes/compras/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/compras/', {'periodo': 'mes'})
 
     assert sum(Decimal(p['monto']) for p in response.data['todas']) == Decimal('200.00')
 
 
 @pytest.mark.django_db
 def test_resumen_compras_excluye_canceladas_de_las_series_de_monto(
-    api_client, sucursal, proveedor, usuario, producto,
+    admin_client, sucursal, proveedor, usuario, producto,
 ):
     compra = _crear_compra(sucursal, proveedor, usuario, total=Decimal('200.00'), estado=Compra.ESTADO_CANCELADA)
     DetalleCompraProducto.objects.create(
@@ -212,17 +212,17 @@ def test_resumen_compras_excluye_canceladas_de_las_series_de_monto(
         subtotal=Decimal('200.00'),
     )
 
-    response = api_client.get('/api/reportes/compras/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/compras/', {'periodo': 'mes'})
 
     assert sum(Decimal(p['monto']) for p in response.data['todas']) == Decimal('0.00')
 
 
 @pytest.mark.django_db
-def test_resumen_compras_conteo_por_estado(api_client, sucursal, proveedor, usuario):
+def test_resumen_compras_conteo_por_estado(admin_client, sucursal, proveedor, usuario):
     _crear_compra(sucursal, proveedor, usuario, total=Decimal('50.00'), estado=Compra.ESTADO_PENDIENTE)
     _crear_compra(sucursal, proveedor, usuario, total=Decimal('50.00'), estado=Compra.ESTADO_RECIBIDA)
 
-    response = api_client.get('/api/reportes/compras/', {'periodo': 'mes'})
+    response = admin_client.get('/api/reportes/compras/', {'periodo': 'mes'})
 
     conteo = {fila['tipo']: fila['cantidad'] for fila in response.data['conteo_estado']}
     assert conteo == {'Pendiente': 1, 'Recibida': 1}
@@ -231,7 +231,7 @@ def test_resumen_compras_conteo_por_estado(api_client, sucursal, proveedor, usua
 # --- /api/reportes/productos-top/ -----------------------------------------
 
 @pytest.mark.django_db
-def test_productos_top_mas_vendidos_ordena_descendente(api_client, sucursal, usuario, categoria):
+def test_productos_top_mas_vendidos_ordena_descendente(admin_client, sucursal, usuario, categoria):
     producto_a = Producto.objects.create(
         nombre_producto='A', sku='SKU-A', unidad_medida='pza', categoria=categoria, precio_venta=Decimal(10),
     )
@@ -242,23 +242,23 @@ def test_productos_top_mas_vendidos_ordena_descendente(api_client, sucursal, usu
     DetalleVenta.objects.create(venta=venta, producto=producto_a, cantidad=Decimal(3), precio_unitario=Decimal(10), subtotal=Decimal(30))
     DetalleVenta.objects.create(venta=venta, producto=producto_b, cantidad=Decimal(7), precio_unitario=Decimal(10), subtotal=Decimal(70))
 
-    response = api_client.get('/api/reportes/productos-top/', {'periodo': 'mes', 'orden': 'mas'})
+    response = admin_client.get('/api/reportes/productos-top/', {'periodo': 'mes', 'orden': 'mas'})
 
     assert response.data[0]['producto'] == 'B'
     assert response.data[1]['producto'] == 'A'
 
 
 @pytest.mark.django_db
-def test_productos_top_menos_vendidos_no_incluye_productos_sin_ventas(api_client, sucursal, usuario, producto):
+def test_productos_top_menos_vendidos_no_incluye_productos_sin_ventas(admin_client, sucursal, usuario, producto):
     # `producto` existe en catálogo pero no tiene ninguna venta en el periodo.
-    response = api_client.get('/api/reportes/productos-top/', {'periodo': 'mes', 'orden': 'menos'})
+    response = admin_client.get('/api/reportes/productos-top/', {'periodo': 'mes', 'orden': 'menos'})
 
     assert response.data == []
 
 
 @pytest.mark.django_db
-def test_productos_top_orden_invalido_es_rechazado(api_client):
-    response = api_client.get('/api/reportes/productos-top/', {'periodo': 'mes', 'orden': 'aleatorio'})
+def test_productos_top_orden_invalido_es_rechazado(admin_client):
+    response = admin_client.get('/api/reportes/productos-top/', {'periodo': 'mes', 'orden': 'aleatorio'})
     assert response.status_code == 400
 
 
@@ -282,7 +282,7 @@ def test_clientes_top_excluye_ventas_sin_cliente(admin_client, sucursal, usuario
 def test_movimientos_caja_reporte_es_solo_de_admin(api_client):
     # Antes abierto a cualquier usuario; solo admin desde `016`,
     # "Actualización: ganancias y movimientos de caja solo para admin".
-    response = api_client.get('/api/reportes/movimientos-caja/', {'periodo': 'mes'})
+    response = api_client.get('/api/reportes/movimientos-caja/', {'periodo': 'dia'})
     assert response.status_code == 403
 
 
@@ -290,10 +290,11 @@ def test_movimientos_caja_reporte_es_solo_de_admin(api_client):
 def test_operador_recibe_el_resumen_sin_ganancia_ni_serie(api_client, sucursal, usuario):
     _crear_venta(sucursal, usuario, Decimal('100.00'))
 
-    response = api_client.get('/api/reportes/resumen/', {'periodo': 'mes'})
+    response = api_client.get('/api/reportes/resumen/', {'periodo': 'dia'})
 
     assert response.status_code == 200
-    assert set(response.data) == {'periodo', 'ventas_total', 'compras_total'}
+    assert set(response.data) == {'periodo', 'ventas_total', 'compras_total', 'periodo_anterior', 'anterior', 'variacion'}
+    assert set(response.data['anterior']) == {'ventas_total', 'compras_total'}
     assert response.data['ventas_total'] == '100.00'
 
 
@@ -315,7 +316,7 @@ def test_operador_ve_el_top_de_clientes_por_numero_de_compras_sin_montos(api_cli
     _crear_venta(sucursal, usuario, total=Decimal('50.00'), cliente=otro)
     _crear_venta(sucursal, usuario, total=Decimal('50.00'), cliente=otro)
 
-    response = api_client.get('/api/reportes/clientes-top/', {'periodo': 'mes', 'orden': 'mas'})
+    response = api_client.get('/api/reportes/clientes-top/', {'periodo': 'dia', 'orden': 'mas'})
 
     assert response.data == [{'cliente': 'Luis Gómez', 'compras': 2}, {'cliente': 'María Pérez', 'compras': 1}]
 

@@ -67,7 +67,7 @@ def _suma(puntos, campo='monto'):
 
 
 def test_resumen_totales_propios_para_el_operador_y_globales_para_el_admin(datos):
-    del_operador = _api(datos['ana']).get('/api/reportes/resumen/', {'periodo': 'mes'}).data
+    del_operador = _api(datos['ana']).get('/api/reportes/resumen/', {'periodo': 'dia'}).data
     del_admin = _api(datos['admin']).get('/api/reportes/resumen/', {'periodo': 'mes'}).data
 
     assert (del_operador['ventas_total'], del_operador['compras_total']) == ('100.00', '40.00')
@@ -75,7 +75,7 @@ def test_resumen_totales_propios_para_el_operador_y_globales_para_el_admin(datos
 
 
 def test_resumen_de_ventas_propio(datos):
-    del_operador = _api(datos['ana']).get('/api/reportes/ventas/', {'periodo': 'mes'}).data
+    del_operador = _api(datos['ana']).get('/api/reportes/ventas/', {'periodo': 'dia'}).data
     del_admin = _api(datos['admin']).get('/api/reportes/ventas/', {'periodo': 'mes'}).data
 
     assert _suma(del_operador['con_envio']) == Decimal('100.00')
@@ -84,7 +84,7 @@ def test_resumen_de_ventas_propio(datos):
 
 
 def test_resumen_de_compras_propio(datos):
-    del_operador = _api(datos['ana']).get('/api/reportes/compras/', {'periodo': 'mes'}).data
+    del_operador = _api(datos['ana']).get('/api/reportes/compras/', {'periodo': 'dia'}).data
     del_admin = _api(datos['admin']).get('/api/reportes/compras/', {'periodo': 'mes'}).data
 
     assert _suma(del_operador['todas']) == Decimal('40.00')
@@ -93,7 +93,7 @@ def test_resumen_de_compras_propio(datos):
 
 
 def test_top_de_productos_propio(datos):
-    del_operador = _api(datos['ana']).get('/api/reportes/productos-top/', {'periodo': 'mes'}).data
+    del_operador = _api(datos['ana']).get('/api/reportes/productos-top/', {'periodo': 'dia'}).data
     del_admin = _api(datos['admin']).get('/api/reportes/productos-top/', {'periodo': 'mes'}).data
 
     assert del_operador == [{'producto': 'Gasa', 'cantidad': '2.00'}]
@@ -101,7 +101,7 @@ def test_top_de_productos_propio(datos):
 
 
 def test_top_de_clientes_propio(datos):
-    del_operador = _api(datos['ana']).get('/api/reportes/clientes-top/', {'periodo': 'mes'}).data
+    del_operador = _api(datos['ana']).get('/api/reportes/clientes-top/', {'periodo': 'dia'}).data
     del_admin = _api(datos['admin']).get('/api/reportes/clientes-top/', {'periodo': 'mes'}).data
 
     assert del_operador == [{'cliente': 'Clínica de Ana', 'compras': 1}]
@@ -109,7 +109,7 @@ def test_top_de_clientes_propio(datos):
 
 
 def test_resumen_de_facturacion_propio(datos):
-    del_operador = _api(datos['ana']).get('/api/reportes/facturacion/', {'periodo': 'mes'}).data
+    del_operador = _api(datos['ana']).get('/api/reportes/facturacion/', {'periodo': 'dia'}).data
     del_admin = _api(datos['admin']).get('/api/reportes/facturacion/', {'periodo': 'mes'}).data
 
     assert (del_operador['facturado_total'], del_operador['facturas_emitidas']) == ('100.00', 1)

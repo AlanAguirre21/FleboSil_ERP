@@ -1,11 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getMovimientosCajaReporte, type LimiteMovimientos, type PeriodoDashboard } from '../api/reportes'
+import {
+  clavePeriodo,
+  getMovimientosCajaReporte,
+  type ConsultaPeriodo,
+  type LimiteMovimientos,
+} from '../api/reportes'
 
-export function useMovimientosCajaDashboard(periodo: PeriodoDashboard, limite: LimiteMovimientos) {
+export function useMovimientosCajaDashboard(consulta: ConsultaPeriodo, limite: LimiteMovimientos) {
   return useQuery({
-    queryKey: ['movimientos-caja-dashboard', periodo, limite],
-    queryFn: () => getMovimientosCajaReporte(periodo, limite),
+    queryKey: ['movimientos-caja-dashboard', ...clavePeriodo(consulta), limite],
+    queryFn: () => getMovimientosCajaReporte(consulta, limite),
     staleTime: 30_000,
   })
 }
