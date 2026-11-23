@@ -100,6 +100,9 @@ class MovimientoInventario(models.Model):
     # fecha histórica del xlsx; desde la app siempre es el momento de creación
     # (los serializers la tienen de solo lectura).
     fecha = models.DateTimeField(default=timezone.now)
+    # Motivo y nota de un ajuste manual (`011`, "Actualización — ajuste de
+    # inventario…"), ej. "Merma o daño: caja golpeada". Vacío en los demás.
+    observacion = models.CharField(max_length=255, blank=True, default='')
 
     class Meta:
         verbose_name_plural = 'movimientos de inventario'

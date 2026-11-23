@@ -14,10 +14,12 @@ import type { Sucursal } from '../../api/sucursales'
 import { useMateriaPrima } from '../../hooks/useMateriaPrima'
 import { useMovimientosInventario } from '../../hooks/useMovimientosInventario'
 import { useProductos } from '../../hooks/useProductos'
-import { useEditarStockMinimo, useStock } from '../../hooks/useInventario'
+import { useStock } from '../../hooks/useInventario'
 import { useSucursales } from '../../hooks/useSucursales'
 import { useUsuarioActual } from '../../hooks/useUsuarioActual'
+import { ModalAjusteInventario } from './ModalAjusteInventario'
 import { ModalTraslado } from './ModalTraslado'
+import styles from './Inventario.module.css'
 
 const ETIQUETAS_TIPO_ITEM: Record<TipoItemInventario, string> = {
   producto: 'Producto',
@@ -55,6 +57,10 @@ function textoMotivo(movimiento: MovimientoInventario): string {
     const flecha = movimiento.motivo === 'traslado_salida' ? '→' : '←'
     const contraparte = movimiento.sucursal_contraparte ? ` ${flecha} ${movimiento.sucursal_contraparte}` : ''
     return `Traslado #${movimiento.referencia_id ?? '?'} (${sentido})${contraparte}`
+  }
+  // Ajuste manual: el motivo y la nota que capturó quien lo hizo.
+  if (movimiento.motivo === 'ajuste' && movimiento.observacion) {
+    return `Ajuste · ${movimiento.observacion}`
   }
   return ETIQUETAS_MOTIVO[movimiento.motivo]
 }
@@ -94,8 +100,6 @@ function leerSucursalInicial(): number | null {
 export function Inventario() {
   const { data: sucursales } = useSucursales()
   const sucursalesActivas = (sucursales ?? []).filter((s) => s.activo)
-  const { data: usuario } = useUsuarioActual()
-  const esAdmin = usuario?.rol === 'admin'
 
   const [pestaña, setPestaña] = useState<Pestaña>('existencias')
 
@@ -122,7 +126,6 @@ export function Inventario() {
           <h1 className="pageTitle">Inventario</h1>
           <p className="pageHint">Consulta las existencias por sucursal y el historial de entradas y salidas.</p>
         </div>
-        <BotonPrimario onClick={() => setTrasladoAbierto(true)}>Traslado</BotonPrimario>
       </div>
 
       <div className="tabs" role="tablist">
@@ -142,12 +145,12 @@ export function Inventario() {
 
       {pestaña === 'existencias' && (
         <PestañaExistencias
-          esAdmin={esAdmin}
           sucursalesActivas={sucursalesActivas}
           sucursal={sucursalStock}
           onCambiarSucursal={setSucursalStockElegida}
           tipo={tipoStock}
           onCambiarTipo={setTipoStock}
+          onAbrirTraslado={() => setTrasladoAbierto(true)}
         />
       )}
       {pestaña === 'movimientos' && <PestañaMovimientos sucursalesActivas={sucursalesActivas} />}
@@ -183,79 +186,49 @@ const ESTADOS_EXISTENCIA: Record<EstadoExistencia, { etiqueta: string; clase: st
   enExistencia: { etiqueta: 'En existencia', clase: 'status statusSuccess' },
 }
 
-interface ErrorEditarStockMinimo {
-  stock_minimo?: string[]
-  detail?: string
+type FiltroEstado = '' | EstadoExistencia | 'porReabastecer'
+type FiltroMinimo = '' | 'conMinimo' | 'sinMinimo'
+
+const OPCIONES_ESTADO: { valor: FiltroEstado; etiqueta: string }[] = [
+  { valor: '', etiqueta: 'Todos' },
+  { valor: 'enExistencia', etiqueta: 'En existencia' },
+  { valor: 'bajoMinimo', etiqueta: 'Bajo mínimo' },
+  { valor: 'agotado', etiqueta: 'Agotado' },
+  { valor: 'porReabastecer', etiqueta: 'Por reabastecer' },
+]
+
+function cumpleEstado(item: StockItem, filtro: FiltroEstado): boolean {
+  if (!filtro) return true
+  const estado = estadoExistencia(item)
+  if (filtro === 'porReabastecer') return estado !== 'enExistencia'
+  return estado === filtro
 }
 
-function CeldaStockMinimoEditable({
-  fila,
-  tipo,
-  sucursalId,
-}: {
-  fila: StockItem
-  tipo: TipoItemInventario
-  sucursalId: number
-}) {
-  const [valor, setValor] = useState(fila.stock_minimo)
-  const [error, setError] = useState('')
-  const editar = useEditarStockMinimo()
-
-  async function guardar() {
-    setError('')
-    if (valor === fila.stock_minimo || valor.trim() === '') {
-      setValor(fila.stock_minimo)
-      return
-    }
-
-    try {
-      await editar.mutateAsync({ tipo, sucursal: sucursalId, item_id: fila.id, stock_minimo: valor })
-    } catch (err) {
-      setValor(fila.stock_minimo)
-      const datos =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: ErrorEditarStockMinimo } }).response?.data
-          : undefined
-      setError(datos?.stock_minimo?.[0] ?? datos?.detail ?? 'No se pudo guardar el stock mínimo.')
-    }
-  }
-
-  return (
-    <div className="cellStack">
-      <input
-        type="number"
-        min={0}
-        step={1}
-        className="inputCompact numeric"
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        onBlur={guardar}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur()
-        }}
-        aria-label={`Stock mínimo de ${fila.nombre}`}
-      />
-      {error && <span className="fieldError">{error}</span>}
-    </div>
-  )
+// Un mínimo en 0 nunca alerta: el filtro ayuda a encontrar esos ítems.
+function cumpleMinimo(item: StockItem, filtro: FiltroMinimo): boolean {
+  if (!filtro) return true
+  return filtro === 'conMinimo' ? Number(item.stock_minimo) > 0 : Number(item.stock_minimo) <= 0
 }
 
 function PestañaExistencias({
-  esAdmin,
   sucursalesActivas,
   sucursal,
   onCambiarSucursal,
   tipo,
   onCambiarTipo,
+  onAbrirTraslado,
 }: {
-  esAdmin: boolean
   sucursalesActivas: Sucursal[]
   sucursal: number | null
   onCambiarSucursal: (sucursal: number | null) => void
   tipo: TipoItemInventario
   onCambiarTipo: (tipo: TipoItemInventario) => void
+  onAbrirTraslado: () => void
 }) {
   const { data: stock, isLoading } = useStock(tipo, sucursal)
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('')
+  const [filtroMinimo, setFiltroMinimo] = useState<FiltroMinimo>('')
+  const [filaAjuste, setFilaAjuste] = useState<StockItem | null>(null)
 
   // Mismo `estadoExistencia` que la tabla: indicadores y filas nunca discrepan.
   const conteo = useMemo(() => {
@@ -264,29 +237,14 @@ function PestañaExistencias({
     return totales
   }, [stock])
 
+  const filtrados = (stock ?? []).filter((item) => cumpleEstado(item, filtroEstado) && cumpleMinimo(item, filtroMinimo))
+  const hayFiltros = Boolean(filtroEstado || filtroMinimo)
+  const nombreSucursal = sucursalesActivas.find((s) => s.id === sucursal)?.nombre_sucursal ?? ''
+
   const columnas: ColumnaTabla<StockItem>[] = [
     { clave: 'nombre', encabezado: 'Nombre' },
     { clave: 'stock_actual', alineacion: 'derecha', encabezado: 'Stock actual' },
-    {
-      clave: 'stock_minimo',
-      alineacion: 'derecha',
-      encabezado: 'Stock mínimo',
-      render: (fila) =>
-        esAdmin && sucursal !== null ? (
-          // `key` incluye `stock_minimo` para remontar (resetear el input a
-          // su nuevo valor) cuando cambia por otra vía — ej. refetch tras
-          // invalidar la cache en otra pestaña — en vez de un efecto que
-          // sincronice el estado local manualmente.
-          <CeldaStockMinimoEditable
-            key={`${fila.id}-${fila.stock_minimo}`}
-            fila={fila}
-            tipo={tipo}
-            sucursalId={sucursal}
-          />
-        ) : (
-          fila.stock_minimo
-        ),
-    },
+    { clave: 'stock_minimo', alineacion: 'derecha', encabezado: 'Stock mínimo' },
     {
       clave: 'stock_bajo',
       encabezado: 'Estado',
@@ -333,6 +291,44 @@ function PestañaExistencias({
             ))}
           </div>
         </div>
+
+        <label className="filterField">
+          Estado
+          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as FiltroEstado)}>
+            {OPCIONES_ESTADO.map((opcion) => (
+              <option key={opcion.valor} value={opcion.valor}>
+                {opcion.etiqueta}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="filterField">
+          Stock mínimo
+          <select value={filtroMinimo} onChange={(e) => setFiltroMinimo(e.target.value as FiltroMinimo)}>
+            <option value="">Todos</option>
+            <option value="conMinimo">Con mínimo definido</option>
+            <option value="sinMinimo">Sin mínimo</option>
+          </select>
+        </label>
+
+        {hayFiltros && (
+          <button
+            type="button"
+            className="actionLink"
+            onClick={() => {
+              setFiltroEstado('')
+              setFiltroMinimo('')
+            }}
+          >
+            Limpiar filtros
+          </button>
+        )}
+
+        <div className={`filtersEnd ${styles.transferPrompt}`}>
+          <span className={styles.transferText}>¿Necesitas mover stock entre sucursales?</span>
+          <BotonPrimario onClick={onAbrirTraslado}>Hacer un traslado</BotonPrimario>
+        </div>
       </div>
 
       <div className="statRow">
@@ -357,15 +353,47 @@ function PestañaExistencias({
       {isLoading ? (
         <p>Cargando inventario…</p>
       ) : (
-        <Tabla columnas={columnas} datos={stock ?? []} mensajeVacio="No hay ítems para mostrar en esta sucursal." />
+        <Tabla
+          columnas={columnas}
+          datos={filtrados}
+          mensajeVacio={
+            hayFiltros ? 'Ningún ítem coincide con los filtros.' : 'No hay ítems para mostrar en esta sucursal.'
+          }
+          renderAcciones={
+            sucursal !== null
+              ? (fila) => (
+                  <button
+                    type="button"
+                    className="actionLink"
+                    onClick={() => setFilaAjuste(fila)}
+                    aria-label={`Ajustar ${fila.nombre}`}
+                  >
+                    Ajustar
+                  </button>
+                )
+              : undefined
+          }
+        />
+      )}
+
+      {/* Se monta solo al abrirse: cerrar descarta lo capturado. */}
+      {filaAjuste && sucursal !== null && (
+        <ModalAjusteInventario
+          fila={filaAjuste}
+          tipo={tipo}
+          sucursalId={sucursal}
+          sucursalNombre={nombreSucursal}
+          onCerrar={() => setFilaAjuste(null)}
+        />
       )}
     </div>
   )
 }
 
-// --- Movimientos -------------------------------------------------------------
-
 function PestañaMovimientos({ sucursalesActivas }: { sucursalesActivas: Sucursal[] }) {
+  // El backend le entrega al operador solo los movimientos que él generó.
+  const { data: usuario } = useUsuarioActual()
+  const esOperador = usuario?.rol === 'operador'
   const [tipoItem, setTipoItem] = useState<TipoItemInventario | ''>('')
   const [item, setItem] = useState<number | ''>('')
   const [sucursal, setSucursal] = useState<number | ''>('')
@@ -431,6 +459,7 @@ function PestañaMovimientos({ sucursalesActivas }: { sucursalesActivas: Sucursa
 
   return (
     <div className="tabPanel">
+      {esOperador && <p className="pageHint">Solo ves los movimientos que tú registraste.</p>}
       <div className="statRow">
         <div className="statTile">
           <span className="statLabel">Movimientos</span>

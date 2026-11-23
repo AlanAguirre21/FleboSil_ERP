@@ -188,14 +188,14 @@ class ResumenFacturacionView(APIView):
 class ResumenProduccionView(APIView):
     """GET /api/reportes/produccion/?periodo= — sección 'Resumen de
     producción' del Dashboard (`016`, "Actualización: periodos ampliados,
-    comparación y producción"). Toda la empresa para ambos roles, como el
-    módulo Producción; el costo solo para el admin.
+    comparación y producción"). El operador ve solo sus producciones, como
+    en el módulo Producción; el costo solo para el admin.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         admin = _es_admin(request)
-        resumen = calcular_resumen_produccion(_rango_de(request), incluir_costo=admin)
+        resumen = calcular_resumen_produccion(_rango_de(request), incluir_costo=admin, usuario=_alcance(request))
         serializer = ResumenProduccionSerializer if admin else ResumenProduccionOperadorSerializer
         return Response(serializer(resumen).data)

@@ -509,15 +509,14 @@ def obtener_movimientos_caja(rango: Rango, limite: str = LIMITE_10):
 # comparación y producción")
 
 
-def calcular_resumen_produccion(rango: Rango, incluir_costo: bool = True) -> dict:
-    """Sección 'Resumen de producción'. Sin filtro por usuario: el módulo
-    Producción (`014`) muestra al operador todas las producciones de la
-    empresa, y el Dashboard sigue ese criterio. El costo (materia prima
+def calcular_resumen_produccion(rango: Rango, incluir_costo: bool = True, usuario=None) -> dict:
+    """Sección 'Resumen de producción'. Con `usuario` (operador), solo sus
+    producciones, igual que el módulo Producción. El costo (materia prima
     congelada al producir) es información financiera: solo se incluye
     para el admin.
     """
 
-    producciones_qs = Produccion.objects.filter(**_en_rango(rango))
+    producciones_qs = _por_usuario(Produccion.objects, 'usuario', usuario).filter(**_en_rango(rango))
     totales = producciones_qs.aggregate(
         producciones=Count('id'), unidades=Sum('cantidad_producida'), costo=Sum('costo_total'),
     )

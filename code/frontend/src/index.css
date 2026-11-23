@@ -463,6 +463,11 @@
     @apply m-0 text-[0.9rem] text-texto-suave;
   }
 
+  /* Cambios a confirmar en un modal ("antes → después"), uno por renglón. */
+  .confirmList {
+    @apply flex flex-col gap-1.5 m-0 mb-4 pl-5 text-[0.9rem] text-texto;
+  }
+
   .confirmText {
     @apply m-0 mb-4 text-[0.9rem] text-texto;
   }

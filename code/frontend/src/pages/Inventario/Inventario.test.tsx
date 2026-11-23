@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { useCrearTraslado, useEditarStockMinimo, useStock } from '../../hooks/useInventario'
+import { useAjustarInventario, useCrearTraslado, useStock } from '../../hooks/useInventario'
 import { useMateriaPrima } from '../../hooks/useMateriaPrima'
 import { useMovimientosInventario } from '../../hooks/useMovimientosInventario'
 import { useProductos } from '../../hooks/useProductos'
@@ -19,7 +19,7 @@ vi.mock('../../hooks/useUsuarioActual')
 const useSucursalesMock = vi.mocked(useSucursales)
 const useStockMock = vi.mocked(useStock)
 const useMovimientosInventarioMock = vi.mocked(useMovimientosInventario)
-const useEditarStockMinimoMock = vi.mocked(useEditarStockMinimo)
+const useAjustarInventarioMock = vi.mocked(useAjustarInventario)
 
 const SUCURSALES = [
   { id: 1, nombre_sucursal: 'Matriz', ubicacion_sucursal: '', telefono_sucursal: '', activo: true },
@@ -40,19 +40,19 @@ const MOVIMIENTOS = [
     id: 1, fecha: '2026-08-20T10:00:00Z', sucursal: 1, sucursal_nombre: 'Matriz', tipo_item: 'producto' as const,
     item_id: 1, item_nombre: 'Suero fisiológico', tipo_movimiento: 'entrada' as const, cantidad: '20.00',
     motivo: 'compra' as const, referencia_id: null, stock_resultante: '20.00', usuario: 1,
-    usuario_nombre: 'admin1', sucursal_contraparte: null,
+    usuario_nombre: 'admin1', sucursal_contraparte: null, observacion: '',
   },
   {
     id: 2, fecha: '2026-08-21T10:00:00Z', sucursal: 1, sucursal_nombre: 'Matriz', tipo_item: 'producto' as const,
     item_id: 1, item_nombre: 'Suero fisiológico', tipo_movimiento: 'salida' as const, cantidad: '5.00',
     motivo: 'traslado_salida' as const, referencia_id: 12, stock_resultante: '15.00', usuario: 1,
-    usuario_nombre: 'admin1', sucursal_contraparte: 'Norte',
+    usuario_nombre: 'admin1', sucursal_contraparte: 'Norte', observacion: '',
   },
   {
     id: 3, fecha: '2026-08-21T10:00:00Z', sucursal: 2, sucursal_nombre: 'Norte', tipo_item: 'producto' as const,
     item_id: 1, item_nombre: 'Suero fisiológico', tipo_movimiento: 'entrada' as const, cantidad: '5.00',
     motivo: 'traslado_entrada' as const, referencia_id: 12, stock_resultante: '5.00', usuario: 1,
-    usuario_nombre: 'admin1', sucursal_contraparte: 'Matriz',
+    usuario_nombre: 'admin1', sucursal_contraparte: 'Matriz', observacion: '',
   },
 ]
 
@@ -77,12 +77,14 @@ function mockearHooks(rol: 'admin' | 'operador' = 'operador') {
   vi.mocked(useUsuarioActual).mockReturnValue(
     { data: { rol } } as unknown as ReturnType<typeof useUsuarioActual>,
   )
-  useEditarStockMinimoMock.mockReturnValue(
-    { mutateAsync: vi.fn(), isPending: false } as unknown as ReturnType<typeof useEditarStockMinimo>,
+  const ajustar = vi.fn().mockResolvedValue(undefined)
+  useAjustarInventarioMock.mockReturnValue(
+    { mutateAsync: ajustar, isPending: false } as unknown as ReturnType<typeof useAjustarInventario>,
   )
   vi.mocked(useCrearTraslado).mockReturnValue(
     { mutateAsync: vi.fn(), isPending: false } as unknown as ReturnType<typeof useCrearTraslado>,
   )
+  return { ajustar }
 }
 
 function primero<T>(elementos: T[]): T {
@@ -149,38 +151,32 @@ describe('Inventario', () => {
     expect(screen.queryByRole('button', { name: /nuevo|crear|editar|eliminar/i })).not.toBeInTheDocument()
   })
 
-  it('un admin ve un control de edición de stock mínimo y puede guardar un nuevo valor', async () => {
+  // 011, "Actualización — ajuste de inventario…": reemplaza la edición del
+  // mínimo directamente en la fila.
+  it('un admin ve la acción "Ajustar" en cada fila; el mínimo ya no se edita en la fila', () => {
     mockearHooks('admin')
-    const mutateAsync = vi.fn().mockResolvedValue(undefined)
-    useEditarStockMinimoMock.mockReturnValue(
-      { mutateAsync, isPending: false } as unknown as ReturnType<typeof useEditarStockMinimo>,
-    )
     render(<Inventario />)
 
-    const input = screen.getByLabelText('Stock mínimo de Suero fisiológico') as HTMLInputElement
-    expect(input).toBeInTheDocument()
-    expect(input.value).toBe('10.00')
-
-    fireEvent.change(input, { target: { value: '15' } })
-    fireEvent.blur(input)
-
-    expect(mutateAsync).toHaveBeenCalledWith({ tipo: 'producto', sucursal: 1, item_id: 1, stock_minimo: '15' })
+    expect(screen.getByRole('button', { name: 'Ajustar Suero fisiológico' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ajustar Gasa estéril' })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Stock mínimo de/)).not.toBeInTheDocument()
   })
 
-  it('un operador no ve ningún control de edición de stock mínimo', () => {
+  it('un operador también ve la acción "Ajustar" y abre el modal', () => {
     mockearHooks('operador')
     render(<Inventario />)
 
-    expect(screen.queryByLabelText(/Stock mínimo de/)).not.toBeInTheDocument()
-    const tablaStock = within(primero(screen.getAllByRole('table')))
-    expect(tablaStock.getAllByText('10.00')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustar Suero fisiológico' }))
+    expect(screen.getByRole('dialog', { name: 'Ajustar inventario' })).toBeInTheDocument()
   })
 
-  it.each(['admin', 'operador'] as const)('un %s ve el botón "Traslado" y abre el modal', (rol) => {
+  it.each(['admin', 'operador'] as const)('un %s abre el traslado desde la barra de filtros', (rol) => {
     mockearHooks(rol)
     render(<Inventario />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Traslado' }))
+    expect(screen.getByText('¿Necesitas mover stock entre sucursales?')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Traslado' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Hacer un traslado' }))
 
     expect(screen.getByRole('dialog', { name: 'Traslado entre sucursales' })).toBeInTheDocument()
   })
@@ -191,7 +187,7 @@ describe('Inventario', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Materia prima' }))
     fireEvent.change(primero(screen.getAllByLabelText('Sucursal')), { target: { value: '2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Traslado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hacer un traslado' }))
 
     expect(screen.getByLabelText('Sucursal origen')).toHaveValue('2')
     expect(screen.getByLabelText('Tipo de la línea 1')).toHaveValue('materia_prima')
@@ -207,6 +203,19 @@ describe('Inventario', () => {
     expect(historial.getByText('Traslado #12 (salida) → Norte')).toBeInTheDocument()
     expect(historial.getByText('Traslado #12 (entrada) ← Matriz')).toBeInTheDocument()
     expect(historial.getByText('Compra')).toBeInTheDocument()
+  })
+
+  it('al operador se le aclara que el historial muestra solo sus movimientos; al admin no', () => {
+    mockearHooks('operador')
+    const { unmount } = render(<Inventario />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Movimientos' }))
+    expect(screen.getByText('Solo ves los movimientos que tú registraste.')).toBeInTheDocument()
+    unmount()
+
+    mockearHooks('admin')
+    render(<Inventario />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Movimientos' }))
+    expect(screen.queryByText('Solo ves los movimientos que tú registraste.')).not.toBeInTheDocument()
   })
 
   it('permite filtrar el historial por motivo "Traslado"', () => {
@@ -343,5 +352,173 @@ describe('Inventario — sucursal inicial desde la URL', () => {
     mockearHooks()
     abrirCon('?sucursal=abc')
     expect(useStockMock).toHaveBeenLastCalledWith('producto', 1)
+  })
+})
+
+describe('Inventario — ajuste de inventario', () => {
+  function abrirAjuste(nombre = 'Suero fisiológico') {
+    fireEvent.click(screen.getByRole('button', { name: `Ajustar ${nombre}` }))
+    return within(screen.getByRole('dialog', { name: 'Ajustar inventario' }))
+  }
+
+  it('cambiar el stock muestra la diferencia, pide motivo y confirma con antes → después', async () => {
+    const { ajustar } = mockearHooks('admin')
+    render(<Inventario />)
+    const modal = abrirAjuste()
+
+    expect(modal.getByText('Suero fisiológico').closest('p')).toHaveTextContent('Suero fisiológico · Matriz')
+    fireEvent.change(modal.getByLabelText('Stock actual'), { target: { value: '1.50' } })
+    expect(modal.getByText(/−0\.50 \(salida\) sobre 2\.00/)).toBeInTheDocument()
+
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
+    expect(modal.getByRole('alert')).toHaveTextContent('Elige el motivo del ajuste.')
+
+    fireEvent.change(modal.getByLabelText('Motivo del ajuste'), { target: { value: 'merma' } })
+    fireEvent.change(modal.getByLabelText('Nota (opcional)'), { target: { value: 'Frasco roto' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
+
+    const confirmacion = within(screen.getByRole('dialog', { name: '¿Estás seguro?' }))
+    expect(confirmacion.getByText(/Stock actual:/)).toHaveTextContent('Stock actual: 2.00 → 1.50 (−0.50, Merma o daño: Frasco roto)')
+    expect(confirmacion.queryByText(/Stock mínimo:/)).not.toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(confirmacion.getByRole('button', { name: 'Confirmar' }))
+    })
+    expect(ajustar).toHaveBeenCalledWith({
+      tipo: 'producto', sucursal: 1, item_id: 1,
+      stock_actual: '1.50', stock_actual_visto: '2.00', motivo_ajuste: 'merma', nota: 'Frasco roto',
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('cambiar solo el mínimo no pide motivo ni genera ajuste de stock', async () => {
+    const { ajustar } = mockearHooks('admin')
+    render(<Inventario />)
+    const modal = abrirAjuste()
+
+    expect(modal.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    fireEvent.change(modal.getByLabelText('Stock mínimo'), { target: { value: '12' } })
+    expect(modal.queryByLabelText('Motivo del ajuste')).not.toBeInTheDocument()
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
+
+    const confirmacion = within(screen.getByRole('dialog', { name: '¿Estás seguro?' }))
+    expect(confirmacion.getByText(/Stock mínimo:/)).toHaveTextContent('Stock mínimo: 10 → 12')
+    await act(async () => {
+      fireEvent.click(confirmacion.getByRole('button', { name: 'Confirmar' }))
+    })
+    expect(ajustar).toHaveBeenCalledWith({ tipo: 'producto', sucursal: 1, item_id: 1, stock_minimo: '12' })
+  })
+
+  it('"Otro" exige una nota', () => {
+    mockearHooks('admin')
+    render(<Inventario />)
+    const modal = abrirAjuste()
+
+    fireEvent.change(modal.getByLabelText('Stock actual'), { target: { value: '5' } })
+    fireEvent.change(modal.getByLabelText('Motivo del ajuste'), { target: { value: 'otro' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
+
+    expect(modal.getByRole('alert')).toHaveTextContent('Describe el motivo del ajuste.')
+    expect(modal.getByLabelText('Nota')).toBeInTheDocument()
+  })
+
+  it('"Volver" regresa al formulario sin perder lo capturado', () => {
+    mockearHooks('admin')
+    render(<Inventario />)
+    const modal = abrirAjuste()
+
+    fireEvent.change(modal.getByLabelText('Stock mínimo'), { target: { value: '7' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+
+    const formulario = within(screen.getByRole('dialog', { name: 'Ajustar inventario' }))
+    expect(formulario.getByLabelText('Stock mínimo')).toHaveValue(7)
+  })
+
+  it('un error del backend se muestra dentro del modal sin cerrarlo', async () => {
+    mockearHooks('admin')
+    useAjustarInventarioMock.mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue({
+        response: { data: { detail: 'El stock cambió a 1.00 mientras ajustabas; revísalo y vuelve a intentar.' } },
+      }),
+      isPending: false,
+    } as unknown as ReturnType<typeof useAjustarInventario>)
+    render(<Inventario />)
+    const modal = abrirAjuste()
+
+    fireEvent.change(modal.getByLabelText('Stock actual'), { target: { value: '3' } })
+    fireEvent.change(modal.getByLabelText('Motivo del ajuste'), { target: { value: 'conteo_fisico' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    })
+
+    expect(screen.getByRole('dialog', { name: '¿Estás seguro?' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('El stock cambió a 1.00')
+  })
+
+  it('el historial muestra el motivo de un ajuste', () => {
+    mockearHooks()
+    useMovimientosInventarioMock.mockReturnValue({
+      data: [{ ...MOVIMIENTOS[0], id: 9, motivo: 'ajuste', tipo_movimiento: 'salida', observacion: 'Merma o daño: Frasco roto' }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMovimientosInventario>)
+    render(<Inventario />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Movimientos' }))
+
+    expect(within(screen.getByRole('table')).getByText('Ajuste · Merma o daño: Frasco roto')).toBeInTheDocument()
+  })
+})
+
+describe('Inventario — filtros de existencias', () => {
+  const STOCK_VARIADO = [
+    { id: 1, nombre: 'Suero', stock_actual: '2.00', stock_minimo: '10.00', stock_bajo: true },
+    { id: 2, nombre: 'Gasa', stock_actual: '50.00', stock_minimo: '10.00', stock_bajo: false },
+    { id: 3, nombre: 'Vendas', stock_actual: '0.00', stock_minimo: '0.00', stock_bajo: false },
+    { id: 4, nombre: 'Guantes', stock_actual: '8.00', stock_minimo: '0.00', stock_bajo: false },
+  ]
+
+  function renderVariado() {
+    mockearHooks()
+    useStockMock.mockReturnValue({ data: STOCK_VARIADO, isLoading: false } as unknown as ReturnType<typeof useStock>)
+    render(<Inventario />)
+  }
+
+  const nombres = () =>
+    within(screen.getByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+      .map((fila) => fila.querySelector('td')?.textContent)
+
+  it('filtra por estado, incluido "Por reabastecer"', () => {
+    renderVariado()
+
+    fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'agotado' } })
+    expect(nombres()).toEqual(['Vendas'])
+
+    fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'porReabastecer' } })
+    expect(nombres()).toEqual(['Suero', 'Vendas'])
+  })
+
+  it('filtra por stock mínimo definido o sin mínimo, y "Limpiar filtros" los quita', () => {
+    renderVariado()
+
+    fireEvent.change(screen.getByLabelText('Stock mínimo'), { target: { value: 'sinMinimo' } })
+    expect(nombres()).toEqual(['Vendas', 'Guantes'])
+
+    fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'enExistencia' } })
+    expect(nombres()).toEqual(['Guantes'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }))
+    expect(nombres()).toHaveLength(4)
+    expect(screen.getByLabelText('Stock mínimo')).toHaveValue('')
+  })
+
+  it('sin coincidencias muestra el mensaje de filtros', () => {
+    mockearHooks()
+    render(<Inventario />)
+
+    fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'agotado' } })
+    expect(screen.getByText('Ningún ítem coincide con los filtros.')).toBeInTheDocument()
   })
 })

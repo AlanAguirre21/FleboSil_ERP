@@ -32,15 +32,34 @@ export async function getStock(tipo: TipoItemInventario, sucursalId: number): Pr
   return data
 }
 
-export interface EditarStockMinimo {
+// Ajuste manual de una fila (admin u operador; 011, "Actualización — ajuste de
+// inventario…"). El stock contado se registra como un movimiento "Ajuste" por
+// la diferencia; el mínimo, sin movimiento.
+export type MotivoAjusteInventario = 'conteo_fisico' | 'merma' | 'caducidad' | 'correccion' | 'otro'
+
+export const ETIQUETAS_MOTIVO_AJUSTE: Record<MotivoAjusteInventario, string> = {
+  conteo_fisico: 'Conteo físico',
+  merma: 'Merma o daño',
+  caducidad: 'Caducidad',
+  correccion: 'Corrección de captura',
+  otro: 'Otro',
+}
+
+export interface AjusteInventarioPayload {
   tipo: TipoItemInventario
   sucursal: number
   item_id: number
-  stock_minimo: number | string
+  // Los cuatro siguientes solo cuando cambia el stock actual.
+  stock_actual?: string
+  // Lo que el usuario tenía en pantalla: si el stock cambió, el backend rechaza.
+  stock_actual_visto?: string
+  motivo_ajuste?: MotivoAjusteInventario
+  nota?: string
+  stock_minimo?: string
 }
 
-export async function editarStockMinimo(datos: EditarStockMinimo): Promise<StockItem> {
-  const { data } = await apiClient.patch<StockItem>('/inventario/stock/', datos)
+export async function ajustarInventario(datos: AjusteInventarioPayload): Promise<StockItem> {
+  const { data } = await apiClient.post<StockItem>('/inventario/ajustes/', datos)
   return data
 }
 
@@ -76,6 +95,8 @@ export interface MovimientoInventario {
   usuario_nombre: string
   // Solo en filas de traslado: la otra sucursal (destino si es salida, origen si es entrada).
   sucursal_contraparte: string | null
+  // Motivo y nota de un ajuste manual ("Merma o daño: …"); vacío en los demás.
+  observacion: string
 }
 
 export interface FiltrosMovimientosInventario {

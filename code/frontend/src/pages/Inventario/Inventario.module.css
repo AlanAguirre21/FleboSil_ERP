@@ -1,0 +1,10 @@
+@reference "../../index.css";
+
+/* Acceso al traslado al final de la barra de filtros de existencias. */
+.transferPrompt {
+  @apply flex items-center gap-3 flex-wrap;
+}
+
+.transferText {
+  @apply text-[0.85rem] text-texto-suave;
+}

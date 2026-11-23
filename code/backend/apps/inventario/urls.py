@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AjusteInventarioView,
     AlertasStockView,
     MovimientoInventarioViewSet,
     StockView,
@@ -15,5 +16,6 @@ router.register('traslados', TrasladoViewSet, basename='traslado')
 urlpatterns = [
     path('alertas/', AlertasStockView.as_view(), name='inventario-alertas'),
     path('stock/', StockView.as_view(), name='inventario-stock'),
+    path('ajustes/', AjusteInventarioView.as_view(), name='inventario-ajustes'),
     *router.urls,
 ]

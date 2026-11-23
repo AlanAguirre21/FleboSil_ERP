@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.catalogo.models import MateriaPrima, Producto
-from core.permissions import LecturaParaTodosEscrituraSoloAdmin
+from core.permissions import LecturaParaTodosEscrituraSoloAdmin, es_admin
 
 from .models import (
     InventarioSucursalMateriaPrima,
@@ -19,6 +19,8 @@ from .models import (
     Traslado,
 )
 from .serializers import (
+    MOTIVOS_AJUSTE,
+    AjusteInventarioSerializer,
     AlertaStockSerializer,
     EditarStockMinimoSerializer,
     MovimientoInventarioSerializer,
@@ -29,6 +31,7 @@ from .serializers import (
 from .services import (
     bloquear_inventario_materia_prima,
     bloquear_inventario_producto,
+    registrar_movimiento_inventario,
     trasladar_stock,
 )
 
@@ -163,6 +166,72 @@ class StockView(APIView):
         return Response(StockItemSerializer(_fila_stock(item_id, nombre, inventario)).data)
 
 
+def _bloquear_item(tipo, sucursal, item_id):
+    """Fila de inventario bloqueada (creada si no existe) y nombre del ítem
+    activo; error de validación si el ítem no existe o está inactivo."""
+
+    if tipo == MovimientoInventario.TIPO_PRODUCTO:
+        producto = Producto.objects.filter(pk=item_id, activo=True).first()
+        if producto is None:
+            raise ValidationError({'item_id': 'Producto no encontrado o inactivo.'})
+        return bloquear_inventario_producto(sucursal, producto), producto.nombre_producto
+    materia_prima = MateriaPrima.objects.filter(pk=item_id, activo=True).first()
+    if materia_prima is None:
+        raise ValidationError({'item_id': 'Materia prima no encontrada o inactiva.'})
+    return bloquear_inventario_materia_prima(sucursal, materia_prima), materia_prima.nombre_item
+
+
+class AjusteInventarioView(APIView):
+    """POST /api/inventario/ajustes/ — ajuste manual de una fila de existencias
+    (`011`, "Actualización — ajuste de inventario…"), para cualquier usuario
+    autenticado (admin u operador): es operación diaria, igual que el traslado.
+
+    Fija el stock contado y/o el stock mínimo, juntos o ninguno. El stock
+    actual nunca se escribe por fuera del flujo de movimientos: la diferencia
+    se registra como un `MovimientoInventario` de entrada o salida con motivo
+    "Ajuste" y la observación (motivo y nota). Cambiar solo el mínimo no
+    genera movimiento, como la edición que reemplaza.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = AjusteInventarioSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        datos = serializer.validated_data
+        tipo, sucursal = datos['tipo'], datos['sucursal']
+        inventario, nombre = _bloquear_item(tipo, sucursal, datos['item_id'])
+
+        if 'stock_actual' in datos:
+            # Concurrencia optimista: con la fila ya bloqueada, se compara con
+            # lo que el usuario vio. Si cambió (ej. una venta), no se aplica.
+            if inventario.stock_actual != datos['stock_actual_visto']:
+                raise ValidationError({
+                    'detail': f'El stock cambió a {inventario.stock_actual} mientras ajustabas; '
+                    'revísalo y vuelve a intentar.',
+                })
+            diferencia = datos['stock_actual'] - inventario.stock_actual
+            if diferencia:
+                inventario.stock_actual = datos['stock_actual']
+                inventario.save(update_fields=['stock_actual'])
+                motivo = MOTIVOS_AJUSTE[datos['motivo_ajuste']]
+                nota = datos['nota'].strip()
+                registrar_movimiento_inventario(
+                    sucursal=sucursal, tipo_item=tipo, item_id=datos['item_id'],
+                    tipo_movimiento=MovimientoInventario.ENTRADA if diferencia > 0 else MovimientoInventario.SALIDA,
+                    cantidad=abs(diferencia), motivo=MovimientoInventario.MOTIVO_AJUSTE, referencia_id=None,
+                    stock_resultante=inventario.stock_actual, usuario=request.user,
+                    observacion=f'{motivo}: {nota}' if nota else motivo,
+                )
+
+        if 'stock_minimo' in datos:
+            inventario.stock_minimo = datos['stock_minimo']
+            inventario.save(update_fields=['stock_minimo'])
+
+        return Response(StockItemSerializer(_fila_stock(datos['item_id'], nombre, inventario)).data)
+
+
 class MovimientoInventarioViewSet(viewsets.ReadOnlyModelViewSet):
     """Historial de movimientos de inventario, de solo lectura — ningún
     método de escritura existe en esta ruta a nivel de framework (no solo
@@ -170,6 +239,10 @@ class MovimientoInventarioViewSet(viewsets.ReadOnlyModelViewSet):
     Filtrable por `sucursal`, `tipo_item`, `item_id`, `tipo_movimiento` y
     `motivo` vía query params combinables. `motivo=traslado` agrupa
     `traslado_salida` y `traslado_entrada`.
+
+    El admin ve el historial de toda la empresa; el operador, solo los
+    movimientos que él generó (sus ventas, compras, producciones, traslados y
+    ajustes), mismo criterio de propiedad que Ventas y Compras.
     """
 
     serializer_class = MovimientoInventarioSerializer
@@ -178,6 +251,8 @@ class MovimientoInventarioViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        if not es_admin(self.request.user):
+            queryset = queryset.filter(usuario=self.request.user)
         params = self.request.query_params
 
         sucursal_id = params.get('sucursal')

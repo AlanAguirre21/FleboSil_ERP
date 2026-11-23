@@ -420,12 +420,12 @@ describe('Dashboard', () => {
   it('el operador ve que las cifras son de sus propios registros; el admin no', () => {
     mockearTodo({ usuario: { nombre: 'Luis', rol: 'operador' } })
     const { unmount } = renderDashboard()
-    expect(screen.getByText('Cifras de tus propias ventas, compras y facturas.')).toBeInTheDocument()
+    expect(screen.getByText('Cifras de tus propias ventas, compras, producciones y facturas.')).toBeInTheDocument()
     unmount()
 
     mockearTodo({ usuario: { nombre: 'Ana', rol: 'admin' } })
     renderDashboard()
-    expect(screen.queryByText('Cifras de tus propias ventas, compras y facturas.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Cifras de tus propias ventas, compras, producciones y facturas.')).not.toBeInTheDocument()
   })
 
   // --- 016, "Actualización: periodos ampliados, comparación y producción" ---

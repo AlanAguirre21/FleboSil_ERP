@@ -129,6 +129,19 @@ describe('Produccion', () => {
     expect(tabla.getByText('10')).toBeInTheDocument()
   })
 
+  it('al operador se le aclara que solo ve sus producciones; al admin no', () => {
+    mockearHooks()
+    mockearStock('100.00')
+    mockUsuarioActual('operador')
+    const { unmount } = render(<Produccion />)
+    expect(screen.getByText('Solo ves las producciones que tú registraste.')).toBeInTheDocument()
+    unmount()
+
+    mockUsuarioActual('admin')
+    render(<Produccion />)
+    expect(screen.queryByText('Solo ves las producciones que tú registraste.')).not.toBeInTheDocument()
+  })
+
   it('no consulta el detalle de una producción mientras su modal está cerrada', () => {
     mockearHooks()
     mockearStock('100.00')

@@ -13,7 +13,7 @@ from apps.inventario.services import (
     bloquear_inventario_producto,
     registrar_movimiento_inventario,
 )
-from core.permissions import EsAdmin
+from core.permissions import EsAdmin, es_admin
 
 from .models import DetalleProduccion, Produccion, Receta
 from .serializers import ProduccionSerializer, RecetaSerializer
@@ -73,7 +73,9 @@ class RecetaViewSet(viewsets.ModelViewSet):
 
 class ProduccionViewSet(viewsets.ModelViewSet):
     """Registro de lotes de producción — feature 012 · Producción.
-    Cualquier usuario autenticado puede registrar y consultar. Solo
+    Cualquier usuario autenticado puede registrar y consultar; el operador
+    solo ve las producciones que él registró (el admin, todas), mismo
+    criterio de propiedad que Ventas, Compras e Inventario. Solo
     lectura y creación (sin `PUT`/`PATCH`/`DELETE`): una producción
     confirmada no se edita, cancela ni revierte (fuera de alcance
     explícito de `spec.md`).
@@ -90,6 +92,8 @@ class ProduccionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        if not es_admin(self.request.user):
+            queryset = queryset.filter(usuario=self.request.user)
         params = self.request.query_params
 
         sucursal_id = params.get('sucursal')

@@ -99,7 +99,7 @@ export function Produccion() {
         ))}
       </div>
 
-      {pestaña === 'producciones' && <PestañaProducciones />}
+      {pestaña === 'producciones' && <PestañaProducciones esAdmin={esAdmin} />}
       {pestaña === 'recetas' && (
         <PestañaRecetas esAdmin={esAdmin} modo={modoReceta} onCambiarModo={setModoReceta} />
       )}
@@ -111,7 +111,7 @@ export function Produccion() {
 
 // --- Producciones -----------------------------------------------------
 
-function PestañaProducciones() {
+function PestañaProducciones({ esAdmin }: { esAdmin: boolean }) {
   const { data: sucursales } = useSucursales()
   const { data: productos } = useProductos()
 
@@ -167,6 +167,8 @@ function PestañaProducciones() {
 
   return (
     <div className="tabPanel">
+      {/* El backend le entrega al operador solo las producciones que él registró. */}
+      {!esAdmin && <p className="pageHint">Solo ves las producciones que tú registraste.</p>}
       <div className="statRow">
         <div className="statTile">
           <span className="statLabel">Producciones</span>

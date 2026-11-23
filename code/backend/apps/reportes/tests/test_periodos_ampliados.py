@@ -403,12 +403,14 @@ def test_resumen_de_produccion_del_admin(api_admin, producciones):
     ]
 
 
-def test_resumen_de_produccion_del_operador_es_de_toda_la_empresa_sin_costo(api_operador, producciones):
+def test_resumen_de_produccion_del_operador_solo_con_las_suyas_y_sin_costo(api_operador, producciones):
     response = api_operador.get('/api/reportes/produccion/', {'periodo': 'dia'})
 
     assert response.status_code == 200
-    assert response.data['producciones'] == 3
-    assert response.data['unidades_producidas'] == '18.00'
+    # De las tres de hoy, solo una es del operador (5 unidades).
+    assert response.data['producciones'] == 1
+    assert response.data['unidades_producidas'] == '5.00'
+    assert response.data['top_productos'] == [{'producto': 'Medias', 'cantidad': '5.00'}]
     assert 'costo_total' not in response.data
 
 

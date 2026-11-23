@@ -58,6 +58,55 @@ class EditarStockMinimoSerializer(serializers.Serializer):
     )
 
 
+# Motivos de un ajuste manual de inventario (`011`, "Actualización — ajuste
+# de inventario…"). Se guardan como texto en `MovimientoInventario.observacion`.
+MOTIVOS_AJUSTE = {
+    'conteo_fisico': 'Conteo físico',
+    'merma': 'Merma o daño',
+    'caducidad': 'Caducidad',
+    'correccion': 'Corrección de captura',
+    'otro': 'Otro',
+}
+
+
+class AjusteInventarioSerializer(serializers.Serializer):
+    """Ajuste manual de una fila de existencias (admin u operador): fija el
+    stock contado, el stock mínimo o ambos.
+
+    `stock_actual_visto` es el valor que el usuario tenía en pantalla: la vista
+    rechaza el ajuste si el stock cambió mientras tanto (ej. una venta).
+    """
+
+    tipo = serializers.ChoiceField(
+        choices=[MovimientoInventario.TIPO_PRODUCTO, MovimientoInventario.TIPO_MATERIA_PRIMA],
+    )
+    sucursal = serializers.PrimaryKeyRelatedField(queryset=Sucursal.objects.filter(activo=True))
+    item_id = serializers.IntegerField()
+    stock_actual = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False,
+        validators=[MinValueValidator(Decimal(0), message='El stock actual no puede ser negativo.')],
+    )
+    stock_actual_visto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    motivo_ajuste = serializers.ChoiceField(choices=list(MOTIVOS_AJUSTE), required=False)
+    nota = serializers.CharField(max_length=200, required=False, allow_blank=True, default='')
+    stock_minimo = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False,
+        validators=[MinValueValidator(Decimal(0)), validar_stock_minimo_entero],
+    )
+
+    def validate(self, attrs):
+        if 'stock_actual' not in attrs and 'stock_minimo' not in attrs:
+            raise serializers.ValidationError({'detail': 'Indica el stock actual, el stock mínimo o ambos.'})
+        if 'stock_actual' in attrs:
+            if 'stock_actual_visto' not in attrs:
+                raise serializers.ValidationError({'stock_actual_visto': 'Falta el stock que se tenía en pantalla.'})
+            if 'motivo_ajuste' not in attrs:
+                raise serializers.ValidationError({'motivo_ajuste': 'Elige el motivo del ajuste.'})
+            if attrs['motivo_ajuste'] == 'otro' and not attrs['nota'].strip():
+                raise serializers.ValidationError({'nota': 'Describe el motivo del ajuste.'})
+        return attrs
+
+
 def resolver_nombre_item(tipo_item, item_id):
     """Resuelve el nombre de un ítem referenciado de forma polimórfica por
     `MovimientoInventario.tipo_item`/`item_id`. No filtra por `activo`: un
@@ -83,7 +132,7 @@ class MovimientoInventarioSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'fecha', 'sucursal', 'sucursal_nombre', 'tipo_item', 'item_id', 'item_nombre',
             'tipo_movimiento', 'cantidad', 'motivo', 'referencia_id', 'stock_resultante',
-            'usuario', 'usuario_nombre', 'sucursal_contraparte',
+            'usuario', 'usuario_nombre', 'sucursal_contraparte', 'observacion',
         ]
 
     def get_sucursal_contraparte(self, movimiento):
